@@ -6,6 +6,8 @@ const { ethers } = require('hardhat');
 const gasPriceKeylessDeployment = '100'; // 100 gweis
 
 async function deploySupernets2Deployer(deployerAddress, signer) {
+    const deployerNetwork = await signer.provider.getNetwork();
+    const chainId = deployerNetwork.chainId ? deployerNetwork.chainId : 0;
     const Supernets2DeployerFactory = await ethers.getContractFactory('Supernets2Deployer', signer);
 
     const deployTxSupernets2Deployer = (Supernets2DeployerFactory.getDeployTransaction(
@@ -22,6 +24,7 @@ async function deploySupernets2Deployer(deployerAddress, signer) {
         gasLimit: gasLimit.toHexString(),
         gasPrice: gasPrice.toHexString(),
         data: deployTxSupernets2Deployer,
+        chainId,
     };
 
     const signature = {
@@ -57,6 +60,9 @@ async function deploySupernets2Deployer(deployerAddress, signer) {
 }
 
 async function create2Deployment(supernets2DeployerContract, salt, deployTransaction, dataCall, deployer, hardcodedGasLimit) {
+    const deployerNetwork = await deployer.provider.getNetwork();
+    const chainId = deployerNetwork.chainId ? deployerNetwork.chainId : 0;
+
     // Encode deploy transaction
     const hashInitCode = ethers.utils.solidityKeccak256(['bytes'], [deployTransaction]);
 
@@ -78,6 +84,7 @@ async function create2Deployment(supernets2DeployerContract, salt, deployTransac
                 dataCall,
             );
             populatedTransaction.gasLimit = ethers.BigNumber.from(hardcodedGasLimit);
+            populatedTransaction.chainId = chainId;
             await (await deployer.sendTransaction(populatedTransaction)).wait();
         } else {
             await (await supernets2DeployerContract.deployDeterministicAndCall(amount, salt, deployTransaction, dataCall)).wait();
@@ -91,6 +98,7 @@ async function create2Deployment(supernets2DeployerContract, salt, deployTransac
                 deployTransaction,
             );
             populatedTransaction.gasLimit = ethers.BigNumber.from(hardcodedGasLimit);
+            populatedTransaction.chainId = chainId;
             await (await deployer.sendTransaction(populatedTransaction)).wait();
         } else {
             await (await supernets2DeployerContract.deployDeterministic(amount, salt, deployTransaction)).wait();
