@@ -103,12 +103,6 @@ For testing purposes, the following private keys are being used. These keys are 
 - **Private key**: 0xdfd01798f92667dbf91df722434e8fbe96af0211d4d1b82bbbbc8f1def7a814f
 - **Address**: 0xc949254d682d8c9ad5682521675b8f43b102aec4
 
-## Verify Deployed Smart Contracts
-
-To confirm that the smart contracts in this repository match those deployed on the mainnet, please follow the instructions in this [document](verifyMainnetDeployment/verifyDeployment.md)
-
-The smart contract used for proof verification is generated from zkEVM Rom and Pil constraints.
-
 ## License
 
 The cdk-validium-contracts project is licensed under the [GNU Affero General Public License](LICENSE) free software license.
