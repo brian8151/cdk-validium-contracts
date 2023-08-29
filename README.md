@@ -42,7 +42,7 @@ The private keys and mnemonics included in this repository are intended solely f
 - `docs`: Specifications and useful resources
 - `test`: Contract test suites
 
-## Activate github hook
+## Activate Github Hook
 
 To activate the GitHub hook, run the following command:
 
@@ -56,7 +56,7 @@ git config --local core.hooksPath .githooks/
 npm i
 ```
 
-## Run tests
+## Run Tests
 
 Execute the test suite with:
 
@@ -78,7 +78,7 @@ To automatically fix linting errors, run:
 npm run lint:fix
 ```
 
-## Build dockers
+## Build Docker Image
 
 To build the Docker image, run:
 
