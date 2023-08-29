@@ -1,5 +1,5 @@
-Polygon CDK Validium Contracts
-Core Contracts for the Polygon CDK Validium
+# Polygon CDK Validium Contracts
+### Core Contracts for the Polygon CDK Validium
 
 The cdk-validium-contracts repository contains the smart contract implementations designed for use with CDK chains configured with Validium.
 
