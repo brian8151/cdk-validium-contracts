@@ -4,24 +4,7 @@
 
 </div>
 
-<p align="left">
-  The cdk-validium-contracts repository contains the smart contract implementations designed for use with CDK chains configured with Validium.
-</p>
-
-<!-- TOC -->
-
-- [Overview of Validium](#overview-of-validium)
-- [Important Note](#important-note)
-- [Prerequisites](#prerequisites)
-- [Repository Structure](#repository-structure)
-- [Activate github hook](#activate-github-hook)
-- [Install](#install)
-- [Run tests](#run-tests)
-- [Linting](#linting)
-- [Build dockers](#build-dockers)
-- [Note](#note)
-- [Verify Deployed Smart Contracts](#verify-deployed-smart-contracts)
-- [License](#license)
+The cdk-validium-contracts repository contains the smart contract implementations designed for use with CDK chains configured with Validium.
 
 ## Overview of Validium
 
