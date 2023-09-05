@@ -89,10 +89,10 @@ async function main() {
             {
                 address: deployOutputParameters.cdkValidiumAddress,
                 constructorArguments: [
-                    deployOutputParameters.PolygonZkEVMGlobalExitRootAddress,
+                    deployOutputParameters.polygonZkEVMGlobalExitRootAddress,
                     deployOutputParameters.maticTokenAddress,
                     deployOutputParameters.verifierAddress,
-                    deployOutputParameters.PolygonZkEVMBridgeAddress,
+                    deployOutputParameters.polygonZkEVMBridgeAddress,
                     deployOutputParameters.cdkDataCommitteeContract,
                     deployOutputParameters.chainID,
                     deployOutputParameters.forkID,
@@ -108,10 +108,10 @@ async function main() {
         await hre.run(
             'verify:verify',
             {
-                address: deployOutputParameters.PolygonZkEVMGlobalExitRootAddress,
+                address: deployOutputParameters.polygonZkEVMGlobalExitRootAddress,
                 constructorArguments: [
                     deployOutputParameters.cdkValidiumAddress,
-                    deployOutputParameters.PolygonZkEVMBridgeAddress,
+                    deployOutputParameters.polygonZkEVMBridgeAddress,
                 ],
             },
         );
@@ -123,7 +123,7 @@ async function main() {
         await hre.run(
             'verify:verify',
             {
-                address: deployOutputParameters.PolygonZkEVMBridgeAddress,
+                address: deployOutputParameters.polygonZkEVMBridgeAddress,
             },
         );
     } catch (error) {
