@@ -544,7 +544,8 @@ async function main() {
         );
 
         // Transfer ownership of the proxyAdmin to timelock
-        await upgrades.admin.transferProxyAdminOwnership(timelockContract.address);
+        const proxyAdminContract = proxyAdminFactory.attach(proxyAdminAddress);
+        await (await proxyAdminContract.transferOwnership(timelockContract.address)).wait();
     }
 
     if (committeeTimelock) {
