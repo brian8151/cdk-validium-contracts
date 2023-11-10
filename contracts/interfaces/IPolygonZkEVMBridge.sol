@@ -68,6 +68,21 @@ interface IPolygonZkEVMBridge {
      */
     error NotValidSignature();
 
+    /**
+     * @dev Thrown when the token is not whitelisted
+     */
+    error OnlyWhitelistedAssets();
+
+    /**
+     * @dev Thrown when the caller is not the admin
+     */
+    error OnlyAdmin();
+
+    /**
+     * @dev Thrown when the caller is not the pending admin
+     */
+    error OnlyPendingAdmin();
+
     function bridgeAsset(
         uint32 destinationNetwork,
         address destinationAddress,

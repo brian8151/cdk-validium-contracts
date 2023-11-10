@@ -5,10 +5,12 @@ pragma solidity 0.8.20;
 import "./lib/DepositContract.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./lib/TokenWrapped.sol";
+import "./interfaces/IALCB.sol";
 import "./interfaces/IBasePolygonZkEVMGlobalExitRoot.sol";
 import "./interfaces/IBridgeMessageReceiver.sol";
 import "./interfaces/IPolygonZkEVMBridge.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./lib/EmergencyManager.sol";
 import "./lib/GlobalExitRootLib.sol";
 
@@ -19,7 +21,8 @@ import "./lib/GlobalExitRootLib.sol";
 contract PolygonZkEVMBridge is
     DepositContract,
     EmergencyManager,
-    IPolygonZkEVMBridge
+    IPolygonZkEVMBridge,
+    OwnableUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -68,7 +71,20 @@ contract PolygonZkEVMBridge is
     // PolygonZkEVM address
     address public polygonZkEVMaddress;
 
+    // ALCB token address
+    address public alcbToken;
+
+    // Allowed assets
+    mapping(address => bool) public whitelistedAssets;
+
+    // Address that will be able to adjust contract parameters or stop the emergency state
+    address public admin;
+
+    // This account will be able to accept the admin role
+    address public pendingAdmin;
+
     /**
+     * @param _admin admin address
      * @param _networkID networkID
      * @param _globalExitRootManager global exit root manager address
      * @param _polygonZkEVMaddress polygonZkEVM address
@@ -76,10 +92,12 @@ contract PolygonZkEVMBridge is
      * emergency state is not possible for the L2 deployment of the bridge, intentionally
      */
     function initialize(
+        address _admin,
         uint32 _networkID,
         IBasePolygonZkEVMGlobalExitRoot _globalExitRootManager,
         address _polygonZkEVMaddress
     ) external virtual initializer {
+        admin = _admin;
         networkID = _networkID;
         globalExitRootManager = _globalExitRootManager;
         polygonZkEVMaddress = _polygonZkEVMaddress;
@@ -91,6 +109,13 @@ contract PolygonZkEVMBridge is
     modifier onlyPolygonZkEVM() {
         if (polygonZkEVMaddress != msg.sender) {
             revert OnlyPolygonZkEVM();
+        }
+        _;
+    }
+
+    modifier onlyAdmin() {
+        if (admin != msg.sender) {
+            revert OnlyAdmin();
         }
         _;
     }
@@ -131,6 +156,90 @@ contract PolygonZkEVMBridge is
     );
 
     /**
+     * @dev Emitted when the admin sets the ALCB contract's address
+     */
+    event SetALCBToken(address alcbToken);
+
+    /**
+     * @dev Emitted when the admin whitelists the asset for bridging
+     */
+    event WhitelistAsset(address token, bool enable);
+
+    /**
+     * @dev Emitted when the admin revokes the asset from bridging
+     */
+    event RevokeAsset(address token);
+
+    /**
+     * @dev Emitted when the admin starts the two-step transfer role setting a new pending admin
+     */
+    event TransferAdminRole(address newPendingAdmin);
+
+    /**
+     * @dev Emitted when the pending admin accepts the admin role
+     */
+    event AcceptAdminRole(address newAdmin);
+
+    /**
+     * @notice Whitelist token for bridging
+     * @param token Token address
+     * @param enable Whether to enable token
+     *
+     * Must only be called by the admin
+     */
+    function whitelistAsset(address token, bool enable) external onlyAdmin {
+        whitelistedAssets[token] = enable;
+
+        emit WhitelistAsset(token, enable);
+    }
+
+    /**
+     * @notice Revoke token from bridging
+     * @param token Token address
+     *
+     * Must only be called by the admin
+     */
+    function revokeAsset(address token) external onlyAdmin {
+        delete whitelistedAssets[token];
+
+        emit RevokeAsset(token);
+    }
+
+    /**
+     * @notice Set ALCB contract's address
+     * @param _alcbToken Token address
+     *
+     * Must only be called by the admin
+     */
+    function setALCBToken(address _alcbToken) external onlyAdmin {
+        alcbToken = _alcbToken;
+        
+        emit SetALCBToken(_alcbToken);
+    }
+
+    /**
+     * @notice Starts the admin role transfer
+     * This is a two step process, the pending admin must accepted to finalize the process
+     * @param newPendingAdmin Address of the new pending admin
+     */
+    function transferAdminRole(address newPendingAdmin) external onlyAdmin {
+        pendingAdmin = newPendingAdmin;
+        emit TransferAdminRole(newPendingAdmin);
+    }
+
+    /**
+     * @notice Allow the current pending admin to accept the admin role
+     */
+    function acceptAdminRole() external {
+        if (pendingAdmin != msg.sender) {
+            revert OnlyPendingAdmin();
+        }
+
+        admin = pendingAdmin;
+        emit AcceptAdminRole(pendingAdmin);
+    }
+
+    /**
      * @notice Deposit add a new leaf to the merkle tree
      * @param destinationNetwork Network destination
      * @param destinationAddress Address destination
@@ -152,6 +261,11 @@ contract PolygonZkEVMBridge is
             destinationNetwork >= _CURRENT_SUPPORTED_NETWORKS
         ) {
             revert DestinationNetworkInvalid();
+        }
+
+        // Check whether the token is whitelisted for bridging
+        if (!whitelistedAssets[token]) {
+            revert OnlyWhitelistedAssets();
         }
 
         address originTokenAddress;
@@ -176,10 +290,17 @@ contract PolygonZkEVMBridge is
             TokenInformation memory tokenInfo = wrappedTokenToTokenInfo[token];
 
             if (tokenInfo.originTokenAddress != address(0)) {
-                // The token is a wrapped token from another network
+                if (token == alcbToken) {
+                    // The token is a wrapped ALCB token from another network
 
-                // Burn tokens
-                TokenWrapped(token).burn(msg.sender, amount);
+                    // Destroy ALCB tokens
+                    IALCB(token)._destroyTokens(msg.sender, amount);
+                } else {
+                    // The token is a wrapped token from another network
+
+                    // Burn tokens
+                    TokenWrapped(token).burn(msg.sender, amount);
+                }
 
                 originTokenAddress = tokenInfo.originTokenAddress;
                 originNetwork = tokenInfo.originNetwork;
