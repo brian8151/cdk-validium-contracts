@@ -17,6 +17,8 @@
     "initialCDKValidiumDeployerOwner" :"0xaddress",
     "maticTokenAddress":"0x617b3a3528F9cDd6630fd3301B9c8911F7Bf063D",
     "cdkValidiumDeployerAddress":"",
+    "gasTokenAddress":"0x617b3a3528F9cDd6630fd3301B9c8911F7Bf063D",
+    "gasTokenNetwork":0,
     "deployerPvtKey": "",
     "maxFeePerGas":"",
     "maxPriorityFeePerGas":"",
