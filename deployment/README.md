@@ -21,7 +21,7 @@ Navigate to `testnet` folder and run
 
 `node wallet.js` 
 
-or from rootно  directory
+or from root directory
 `npx hardhat run deployment/testnet/wallets.js`
 
 ```
