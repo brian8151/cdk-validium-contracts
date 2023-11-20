@@ -1,10 +1,12 @@
 const { expect } = require('chai');
 const { ethers, upgrades } = require('hardhat');
+const { createPermitSignature, ifacePermit } = require('../../src/permit-helper');
 const MerkleTreeBridge = require('@0xpolygonhermez/zkevm-commonjs').MTBridge;
 const {
     verifyMerkleProof,
     getLeafValue,
 } = require('@0xpolygonhermez/zkevm-commonjs').mtBridgeUtils;
+const ALCB = require('../../compiled-contracts/ALCB.json');
 
 function calculateGlobalExitRoot(mainnetExitRoot, rollupExitRoot) {
     return ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [mainnetExitRoot, rollupExitRoot]);
@@ -18,6 +20,7 @@ describe('PolygonZkEVMBridge Contract', () => {
     let polygonZkEVMGlobalExitRoot;
     let polygonZkEVMBridgeContract;
     let tokenContract;
+    let alcbTokenContract;
 
     const tokenName = 'Matic Token';
     const tokenSymbol = 'MATIC';
@@ -26,6 +29,10 @@ describe('PolygonZkEVMBridge Contract', () => {
     const metadataToken = ethers.utils.defaultAbiCoder.encode(
         ['string', 'string', 'uint8'],
         [tokenName, tokenSymbol, decimals],
+    );
+    const alcbMetadataToken = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'string', 'uint8'],
+        ['AliceNet Utility Token', 'ALCB', decimals],
     );
 
     const networkIDMainnet = 0;
@@ -38,7 +45,13 @@ describe('PolygonZkEVMBridge Contract', () => {
 
     beforeEach('Deploy contracts', async () => {
         // load signers
-        [deployer, rollup, acc1] = await ethers.getSigners();
+        [deployer, rollup, acc1, admin] = await ethers.getSigners();
+
+        // deploy ALCB token
+        const alcbTokenFactory = await ethers.getContractFactoryFromArtifact(ALCB);
+        alcbTokenContract = await alcbTokenFactory.deploy();
+        await alcbTokenContract.deployed();
+        await alcbTokenContract.mintTo(deployer.address, 0, { value: ethers.utils.parseEther('200') });
 
         // deploy PolygonZkEVMBridge
         const polygonZkEVMBridgeFactory = await ethers.getContractFactory('PolygonZkEVMBridge');
@@ -48,7 +61,12 @@ describe('PolygonZkEVMBridge Contract', () => {
         const PolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRoot');
         polygonZkEVMGlobalExitRoot = await PolygonZkEVMGlobalExitRootFactory.deploy(rollup.address, polygonZkEVMBridgeContract.address);
 
-        await polygonZkEVMBridgeContract.initialize(networkIDMainnet, polygonZkEVMGlobalExitRoot.address, polygonZkEVMAddress);
+        await polygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            polygonZkEVMGlobalExitRoot.address,
+            polygonZkEVMAddress,
+            alcbTokenContract.address,
+        );
 
         // deploy token
         const maticTokenFactory = await ethers.getContractFactory('ERC20PermitMock');
@@ -59,12 +77,130 @@ describe('PolygonZkEVMBridge Contract', () => {
             tokenInitialBalance,
         );
         await tokenContract.deployed();
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenContract.address);
     });
 
     it('should check the constructor parameters', async () => {
         expect(await polygonZkEVMBridgeContract.globalExitRootManager()).to.be.equal(polygonZkEVMGlobalExitRoot.address);
         expect(await polygonZkEVMBridgeContract.networkID()).to.be.equal(networkIDMainnet);
         expect(await polygonZkEVMBridgeContract.polygonZkEVMaddress()).to.be.equal(polygonZkEVMAddress);
+        expect(await polygonZkEVMBridgeContract.ALCBToken()).to.be.equal(alcbTokenContract.address);
+    });
+
+    it('should check admin related functions', async () => {
+        // Whitelist bridge assets
+
+        // Fail for non-admin
+        await expect(polygonZkEVMBridgeContract.connect(acc1).whitelistAsset(ethers.constants.AddressZero))
+            .to.be.revertedWith('Ownable: caller is not the owner');
+        await expect(polygonZkEVMBridgeContract.connect(acc1).revokeAsset(ethers.constants.AddressZero))
+            .to.be.revertedWith('Ownable: caller is not the owner');
+        await expect(polygonZkEVMBridgeContract.connect(acc1).setALCBToken(ethers.constants.AddressZero))
+            .to.be.revertedWith('Ownable: caller is not the owner');
+
+        // Works for admin
+        await expect(polygonZkEVMBridgeContract.whitelistAsset(tokenContract.address))
+            .to.emit(polygonZkEVMBridgeContract, 'WhitelistAsset').withArgs(tokenContract.address);
+        expect(await polygonZkEVMBridgeContract.whitelistedAssets(tokenContract.address)).to.be.equal(true);
+        await expect(polygonZkEVMBridgeContract.revokeAsset(tokenContract.address))
+            .to.emit(polygonZkEVMBridgeContract, 'RevokeAsset').withArgs(tokenContract.address);
+        expect(await polygonZkEVMBridgeContract.whitelistedAssets(tokenContract.address)).to.be.equal(false);
+        await expect(polygonZkEVMBridgeContract.setALCBToken(tokenContract.address))
+            .to.emit(polygonZkEVMBridgeContract, 'SetALCBToken').withArgs(tokenContract.address);
+        expect(await polygonZkEVMBridgeContract.ALCBToken()).to.be.equal(tokenContract.address);
+    });
+
+    it('should PolygonZkEVM bridge fail with not enough ALCB allowance', async () => {
+        const amount = ethers.utils.parseEther('2');
+        const destinationNetwork = networkIDRollup;
+        const destinationAddress = deployer.address;
+
+        await expect(alcbTokenContract.approve(polygonZkEVMBridgeContract.address, 1))
+            .to.emit(alcbTokenContract, 'Approval')
+            .withArgs(deployer.address, polygonZkEVMBridgeContract.address, 1);
+
+        await expect(polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, destinationAddress, amount, alcbTokenContract.address, true, '0x'))
+            .to.be.revertedWith('ERC20: insufficient allowance');
+    });
+
+    it('should PolygonZkEVM bridge fail with not enough ALCB funds', async () => {
+        const destinationNetwork = networkIDRollup;
+        const destinationAddress = deployer.address;
+
+        const currentBalance = await alcbTokenContract.balanceOf(deployer.address);
+        const amount = currentBalance + 1;
+
+        await expect(alcbTokenContract.approve(polygonZkEVMBridgeContract.address, amount))
+            .to.emit(alcbTokenContract, 'Approval')
+            .withArgs(deployer.address, polygonZkEVMBridgeContract.address, amount);
+
+        await expect(polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, destinationAddress, amount, alcbTokenContract.address, true, '0x'))
+            .to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+
+    it('should PolygonZkEVM bridge fail if not whitelisted', async () => {
+        const amount = ethers.utils.parseEther('1');
+        const destinationNetwork = networkIDRollup;
+        const destinationAddress = deployer.address;
+
+        await expect(polygonZkEVMBridgeContract.revokeAsset(tokenContract.address))
+            .to.emit(polygonZkEVMBridgeContract, 'RevokeAsset').withArgs(tokenContract.address);
+
+        await expect(alcbTokenContract.approve(polygonZkEVMBridgeContract.address, amount))
+            .to.emit(alcbTokenContract, 'Approval')
+            .withArgs(deployer.address, polygonZkEVMBridgeContract.address, amount);
+
+        await expect(polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, destinationAddress, amount, tokenContract.address, true, '0x'))
+            .to.be.revertedWith('OnlyWhitelistedAssets');
+
+        // trying to send ether
+        await expect(polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, ethers.constants.AddressZero, amount, tokenContract.address, true, '0x', { value: amount }))
+            .to.be.revertedWith('OnlyWhitelistedAssets');
+    });
+
+    it('should PolygonZkEVM bridge destroying ALCB token', async () => {
+        const originNetwork = networkIDMainnet;
+        const amount = ethers.utils.parseEther('1');
+        const destinationNetwork = networkIDRollup;
+        const destinationAddress = deployer.address;
+
+        const rollupExitRoot = await polygonZkEVMGlobalExitRoot.lastRollupExitRoot();
+
+        const depositCount = await polygonZkEVMBridgeContract.depositCount();
+        const alcbMetadata = alcbMetadataToken;
+        const alcbMetadataHash = ethers.utils.solidityKeccak256(['bytes'], [alcbMetadata]);
+
+        await expect(alcbTokenContract.approve(polygonZkEVMBridgeContract.address, amount))
+            .to.emit(alcbTokenContract, 'Approval')
+            .withArgs(deployer.address, polygonZkEVMBridgeContract.address, amount);
+
+        const supplyBefore = await alcbTokenContract.totalSupply();
+
+        // pre compute root merkle tree in Js
+        const height = 32;
+        const merkleTree = new MerkleTreeBridge(height);
+        const leafValue = getLeafValue(
+            LEAF_TYPE_ASSET,
+            originNetwork,
+            alcbTokenContract.address,
+            destinationNetwork,
+            destinationAddress,
+            amount,
+            alcbMetadataHash,
+        );
+        merkleTree.add(leafValue);
+        const rootJSMainnet = merkleTree.getRoot();
+
+        // Check if approval works
+        await expect(polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, destinationAddress, amount, alcbTokenContract.address, true, '0x'))
+            .to.emit(alcbTokenContract, 'Transfer')
+            .withArgs(polygonZkEVMBridgeContract.address, ethers.constants.AddressZero, amount)
+            .to.emit(polygonZkEVMBridgeContract, 'BridgeEvent')
+            .withArgs(LEAF_TYPE_ASSET, originNetwork, alcbTokenContract.address, destinationNetwork, destinationAddress, amount, alcbMetadata, depositCount)
+            .to.emit(polygonZkEVMGlobalExitRoot, 'UpdateGlobalExitRoot')
+            .withArgs(rootJSMainnet, rollupExitRoot);
+
+        expect(await alcbTokenContract.totalSupply()).to.be.equal(supplyBefore.sub(amount));
     });
 
     it('should PolygonZkEVM bridge asset and verify merkle proof', async () => {
@@ -303,6 +439,7 @@ describe('PolygonZkEVMBridge Contract', () => {
         // Just to have the metric of a low cost bridge Asset
         const tokenAddress2 = ethers.constants.AddressZero; // Ether
         const amount2 = ethers.utils.parseEther('10');
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenAddress2);
         await polygonZkEVMBridgeContract.bridgeAsset(destinationNetwork, destinationAddress, amount2, tokenAddress2, false, '0x', { value: amount2 });
     });
 
@@ -498,6 +635,7 @@ describe('PolygonZkEVMBridge Contract', () => {
         const hashInitCode = ethers.utils.solidityKeccak256(['bytes', 'bytes'], [minimalBytecodeProxy, metadataToken]);
         const precalculateWrappedErc20 = await ethers.utils.getCreate2Address(polygonZkEVMBridgeContract.address, salt, hashInitCode);
         const newWrappedToken = tokenWrappedFactory.attach(precalculateWrappedErc20);
+        await polygonZkEVMBridgeContract.whitelistAsset(newWrappedToken.address);
 
         // Use precalculatedWrapperAddress and check if matches
         expect(await polygonZkEVMBridgeContract.precalculatedWrapperAddress(
@@ -694,6 +832,7 @@ describe('PolygonZkEVMBridge Contract', () => {
         const amount = ethers.utils.parseEther('10');
         const destinationNetwork = networkIDRollup;
         const destinationAddress = deployer.address;
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenAddress);
 
         const metadata = '0x';// since is ether does not have metadata
 
@@ -964,6 +1103,7 @@ describe('PolygonZkEVMBridge Contract', () => {
         const amount = ethers.utils.parseEther('10');
         const destinationNetwork = networkIDMainnet;
         const destinationAddress = deployer.address;
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenAddress);
 
         const metadata = '0x'; // since is ether does not have metadata
         const metadataHash = ethers.utils.solidityKeccak256(['bytes'], [metadata]);
@@ -1117,6 +1257,7 @@ describe('PolygonZkEVMBridge Contract', () => {
         const amount = ethers.utils.parseEther('10');
         const destinationNetwork = networkIDMainnet;
         const destinationAddress = deployer.address;
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenAddress);
 
         const metadata = '0x176923791298713271763697869132'; // since is ether does not have metadata
         const metadataHash = ethers.utils.solidityKeccak256(['bytes'], [metadata]);

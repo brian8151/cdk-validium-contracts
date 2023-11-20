@@ -53,7 +53,12 @@ describe('PolygonZkEVMBridge Contract Permit tests', () => {
         const polygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRoot');
         polygonZkEVMGlobalExitRoot = await polygonZkEVMGlobalExitRootFactory.deploy(rollup.address, polygonZkEVMBridgeContract.address);
 
-        await polygonZkEVMBridgeContract.initialize(networkIDMainnet, polygonZkEVMGlobalExitRoot.address, polygonZkEVMAddress);
+        await polygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            polygonZkEVMGlobalExitRoot.address,
+            polygonZkEVMAddress,
+            polygonZkEVMBridgeContract.address,
+        );
 
         // deploy token
         const maticTokenFactory = await ethers.getContractFactory('TokenWrapped');
@@ -65,6 +70,8 @@ describe('PolygonZkEVMBridge Contract Permit tests', () => {
         await tokenContract.deployed();
 
         await tokenContract.mint(deployer.address, tokenInitialBalance);
+
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenContract.address);
     });
 
     it('should PolygonZkEVMBridge and with permit eip-2612 compilant', async () => {
@@ -164,6 +171,7 @@ describe('PolygonZkEVMBridge Contract Permit tests', () => {
         );
         await daiContract.deployed();
         await daiContract.mint(deployer.address, ethers.utils.parseEther('100'));
+        await polygonZkEVMBridgeContract.whitelistAsset(daiContract.address);
 
         const depositCount = await polygonZkEVMBridgeContract.depositCount();
         const originNetwork = networkIDMainnet;
@@ -263,6 +271,7 @@ describe('PolygonZkEVMBridge Contract Permit tests', () => {
         );
         await uniContract.deployed();
         await uniContract.mint(deployer.address, ethers.utils.parseEther('100'));
+        await polygonZkEVMBridgeContract.whitelistAsset(uniContract.address);
 
         const depositCount = await polygonZkEVMBridgeContract.depositCount();
         const originNetwork = networkIDMainnet;

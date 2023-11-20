@@ -113,7 +113,12 @@ describe('Emergency mode test', () => {
         expect(precalculateCommitteeAddress).to.be.equal(cdkDataCommitteeContract.address);
         expect(precalculateCDKValidiumAddress).to.be.equal(cdkValidiumContract.address);
 
-        await PolygonZkEVMBridgeContract.initialize(networkIDMainnet, PolygonZkEVMGlobalExitRoot.address, cdkValidiumContract.address);
+        await PolygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            PolygonZkEVMGlobalExitRoot.address,
+            cdkValidiumContract.address,
+            maticTokenContract.address,
+        );
         await cdkValidiumContract.initialize(
             {
                 admin: admin.address,

@@ -178,7 +178,12 @@ describe('Polygon Data Committee', () => {
         expect(precalculateBridgeAddress).to.be.equal(PolygonZkEVMBridgeContract.address);
         expect(precalculateCDKValidiumAddress).to.be.equal(cdkValidiumContract.address);
 
-        await PolygonZkEVMBridgeContract.initialize(networkIDMainnet, PolygonZkEVMGlobalExitRoot.address, cdkValidiumContract.address);
+        await PolygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            PolygonZkEVMGlobalExitRoot.address,
+            cdkValidiumContract.address,
+            maticTokenContract.address,
+        );
         await cdkValidiumContract.initialize(
             {
                 admin: admin.address,
@@ -410,9 +415,10 @@ describe('Polygon Data Committee', () => {
         // Sign committee data
         const hashToSign = await calculateLastAccInputHash([sequence]);
         const signaturesAndAddrs = genSignaturesAndAddrs(hashToSign);
-
+        const randomSigner = await ethers.Wallet.createRandom();
+        const wrongSignature = ethers.utils.joinSignature(randomSigner._signingKey().signDigest(hashToSign));
         // Replace last address
-        const withWrongSignature = `0x1${signaturesAndAddrs.slice(3)}`;
+        const withWrongSignature = wrongSignature + signaturesAndAddrs.slice(132);
         await expect(cdkValidiumContract.connect(trustedSequencer)
             .sequenceBatches([sequence], deployer.address, withWrongSignature))
             .to.be.revertedWith('CommitteeAddressDoesntExist');

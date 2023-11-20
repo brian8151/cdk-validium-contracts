@@ -6,6 +6,8 @@ const {
     getLeafValue,
 } = require('@0xpolygonhermez/zkevm-commonjs').mtBridgeUtils;
 
+const ALCB = require('../../compiled-contracts/ALCB.json');
+
 function calculateGlobalExitRoot(mainnetExitRoot, rollupExitRoot) {
     return ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [mainnetExitRoot, rollupExitRoot]);
 }
@@ -18,6 +20,7 @@ describe('PolygonZkEVMBridge Mock Contract', () => {
     let polygonZkEVMGlobalExitRoot;
     let polygonZkEVMBridgeContract;
     let tokenContract;
+    let alcbTokenContract;
 
     const tokenName = 'Matic Token';
     const tokenSymbol = 'MATIC';
@@ -38,6 +41,12 @@ describe('PolygonZkEVMBridge Mock Contract', () => {
         // load signers
         [deployer, rollup, acc1] = await ethers.getSigners();
 
+        // deploy ALCB token
+        const alcbTokenFactory = await ethers.getContractFactoryFromArtifact(ALCB);
+        alcbTokenContract = await alcbTokenFactory.deploy();
+        await alcbTokenContract.deployed();
+        await alcbTokenContract.mintTo(deployer.address, 0, { value: ethers.utils.parseEther('200') });
+
         // deploy global exit root manager
         const PolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRootMock');
 
@@ -46,7 +55,12 @@ describe('PolygonZkEVMBridge Mock Contract', () => {
         polygonZkEVMBridgeContract = await upgrades.deployProxy(polygonZkEVMBridgeFactory, [], { initializer: false });
 
         polygonZkEVMGlobalExitRoot = await PolygonZkEVMGlobalExitRootFactory.deploy(rollup.address, polygonZkEVMBridgeContract.address);
-        await polygonZkEVMBridgeContract.initialize(networkIDMainnet, polygonZkEVMGlobalExitRoot.address, polygonZkEVMAddress);
+        await polygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            polygonZkEVMGlobalExitRoot.address,
+            polygonZkEVMAddress,
+            alcbTokenContract.address,
+        );
 
         // deploy token
         const maticTokenFactory = await ethers.getContractFactory('ERC20PermitMock');
@@ -57,6 +71,7 @@ describe('PolygonZkEVMBridge Mock Contract', () => {
             tokenInitialBalance,
         );
         await tokenContract.deployed();
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenContract.address);
     });
 
     it('should check the constructor parameters', async () => {
@@ -136,6 +151,7 @@ describe('PolygonZkEVMBridge Mock Contract', () => {
         const amount = ethers.utils.parseEther('10');
         const destinationNetwork = networkIDRollup;
         const destinationAddress = deployer.address;
+        await polygonZkEVMBridgeContract.whitelistAsset(tokenAddress);
 
         await expect(polygonZkEVMBridgeContract.bridgeAsset(
             destinationNetwork,

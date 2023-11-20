@@ -5,10 +5,12 @@ pragma solidity 0.8.20;
 import "./lib/DepositContract.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "./lib/TokenWrapped.sol";
+import "./interfaces/IALCB.sol";
 import "./interfaces/IBasePolygonZkEVMGlobalExitRoot.sol";
 import "./interfaces/IBridgeMessageReceiver.sol";
 import "./interfaces/IPolygonZkEVMBridge.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "./lib/EmergencyManager.sol";
 import "./lib/GlobalExitRootLib.sol";
 
@@ -19,7 +21,8 @@ import "./lib/GlobalExitRootLib.sol";
 contract PolygonZkEVMBridge is
     DepositContract,
     EmergencyManager,
-    IPolygonZkEVMBridge
+    IPolygonZkEVMBridge,
+    Ownable2StepUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -68,21 +71,35 @@ contract PolygonZkEVMBridge is
     // PolygonZkEVM address
     address public polygonZkEVMaddress;
 
+    // ALCB token address
+    IALCB public ALCBToken;
+
+    // Allowed assets
+    mapping(address => bool) public whitelistedAssets;
+
     /**
      * @param _networkID networkID
      * @param _globalExitRootManager global exit root manager address
      * @param _polygonZkEVMaddress polygonZkEVM address
+     * @param _ALCBToken ALCB token address
      * @notice The value of `_polygonZkEVMaddress` on the L2 deployment of the contract will be address(0), so
      * emergency state is not possible for the L2 deployment of the bridge, intentionally
      */
     function initialize(
         uint32 _networkID,
         IBasePolygonZkEVMGlobalExitRoot _globalExitRootManager,
-        address _polygonZkEVMaddress
+        address _polygonZkEVMaddress,
+        IALCB _ALCBToken
     ) external virtual initializer {
         networkID = _networkID;
         globalExitRootManager = _globalExitRootManager;
         polygonZkEVMaddress = _polygonZkEVMaddress;
+
+        // set ALCB
+        ALCBToken = _ALCBToken;
+
+        // Initialize owner; 
+        __Ownable_init();
 
         // Initialize OZ contracts
         __ReentrancyGuard_init();
@@ -131,6 +148,57 @@ contract PolygonZkEVMBridge is
     );
 
     /**
+     * @dev Emitted when the owner sets the ALCB contract's address
+     */
+    event SetALCBToken(address alcbToken);
+
+    /**
+     * @dev Emitted when the owner whitelists the asset for bridging
+     */
+    event WhitelistAsset(address token);
+
+    /**
+     * @dev Emitted when the owner revokes the asset from bridging
+     */
+    event RevokeAsset(address token);
+
+    /**
+     * @notice Whitelist token for bridging
+     * @param token Token address
+     *
+     * Must only be called by the owner
+     */
+    function whitelistAsset(address token) external onlyOwner() {
+        whitelistedAssets[token] = true;
+
+        emit WhitelistAsset(token);
+    }
+
+    /**
+     * @notice Revoke token from bridging
+     * @param token Token address
+     *
+     * Must only be called by the owner
+     */
+    function revokeAsset(address token) external onlyOwner() {
+        delete whitelistedAssets[token];
+
+        emit RevokeAsset(token);
+    }
+
+    /**
+     * @notice Set ALCB contract's address
+     * @param _ALCBToken Token address
+     *
+     * Must only be called by the owner
+     */
+    function setALCBToken(IALCB _ALCBToken) external onlyOwner() {
+        ALCBToken = _ALCBToken;
+        
+        emit SetALCBToken(address(_ALCBToken));
+    }
+
+    /**
      * @notice Deposit add a new leaf to the merkle tree
      * @param destinationNetwork Network destination
      * @param destinationAddress Address destination
@@ -159,61 +227,89 @@ contract PolygonZkEVMBridge is
         bytes memory metadata;
         uint256 leafAmount = amount;
 
-        if (token == address(0)) {
-            // Ether transfer
-            if (msg.value != amount) {
-                revert AmountDoesNotMatchMsgValue();
-            }
+        // Check if it's ALCB
+        if (token == address(ALCBToken)) {
+            // Send funds to the Bridge before destroying
+            IERC20Upgradeable(token).safeTransferFrom(
+                msg.sender,
+                address(this),
+                amount
+            );
 
-            // Ether is treated as ether from mainnet
+            // Destroy ALCB tokens
+            IALCB(token).destroyTokens(amount);
+
             originNetwork = _MAINNET_NETWORK_ID;
+            originTokenAddress = address(ALCBToken);
+
+            // Encode metadata
+            metadata = abi.encode(
+                _safeName(token),
+                _safeSymbol(token),
+                _safeDecimals(token)
+            );
         } else {
-            // Check msg.value is 0 if tokens are bridged
-            if (msg.value != 0) {
-                revert MsgValueNotZero();
+            // Check whether the token is whitelisted for bridging
+            if (!whitelistedAssets[token]) {
+                revert OnlyWhitelistedAssets();
             }
 
-            TokenInformation memory tokenInfo = wrappedTokenToTokenInfo[token];
-
-            if (tokenInfo.originTokenAddress != address(0)) {
-                // The token is a wrapped token from another network
-
-                // Burn tokens
-                TokenWrapped(token).burn(msg.sender, amount);
-
-                originTokenAddress = tokenInfo.originTokenAddress;
-                originNetwork = tokenInfo.originNetwork;
-            } else {
-                // Use permit if any
-                if (permitData.length != 0) {
-                    _permit(token, amount, permitData);
+            if (token == address(0)) {
+                // Ether transfer
+                if (msg.value != amount) {
+                    revert AmountDoesNotMatchMsgValue();
                 }
 
-                // In order to support fee tokens check the amount received, not the transferred
-                uint256 balanceBefore = IERC20Upgradeable(token).balanceOf(
-                    address(this)
-                );
-                IERC20Upgradeable(token).safeTransferFrom(
-                    msg.sender,
-                    address(this),
-                    amount
-                );
-                uint256 balanceAfter = IERC20Upgradeable(token).balanceOf(
-                    address(this)
-                );
+                // Ether is treated as ether from mainnet
+                originNetwork = _MAINNET_NETWORK_ID;
+            } else {
+                // Check msg.value is 0 if tokens are bridged
+                if (msg.value != 0) {
+                    revert MsgValueNotZero();
+                }
 
-                // Override leafAmount with the received amount
-                leafAmount = balanceAfter - balanceBefore;
+                TokenInformation memory tokenInfo = wrappedTokenToTokenInfo[token];
 
-                originTokenAddress = token;
-                originNetwork = networkID;
+                if (tokenInfo.originTokenAddress != address(0)) {
+                    // The token is a wrapped token from another network
 
-                // Encode metadata
-                metadata = abi.encode(
-                    _safeName(token),
-                    _safeSymbol(token),
-                    _safeDecimals(token)
-                );
+                    // Burn tokens
+                    TokenWrapped(token).burn(msg.sender, amount);
+
+                    originTokenAddress = tokenInfo.originTokenAddress;
+                    originNetwork = tokenInfo.originNetwork;
+                } else {
+                    // Use permit if any
+                    if (permitData.length != 0) {
+                        _permit(token, amount, permitData);
+                    }
+
+                    // In order to support fee tokens check the amount received, not the transferred
+                    uint256 balanceBefore = IERC20Upgradeable(token).balanceOf(
+                        address(this)
+                    );
+                    IERC20Upgradeable(token).safeTransferFrom(
+                        msg.sender,
+                        address(this),
+                        amount
+                    );
+                    uint256 balanceAfter = IERC20Upgradeable(token).balanceOf(
+                        address(this)
+                    );
+
+                    // Override leafAmount with the received amount
+                    leafAmount = balanceAfter - balanceBefore;
+
+                    originTokenAddress = token;
+                    originNetwork = networkID;
+
+                    // Encode metadata
+                    metadata = abi.encode(
+                        _safeName(token),
+                        _safeSymbol(token),
+                        _safeDecimals(token)
+                    );
+                }
             }
         }
 

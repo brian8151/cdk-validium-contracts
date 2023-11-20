@@ -5,13 +5,16 @@ const {
     getLeafValue,
 } = require('@0xpolygonhermez/zkevm-commonjs').mtBridgeUtils;
 
-describe('PolygonZkEVMBridge Contract werid metadata', () => {
+const ALCB = require('../../compiled-contracts/ALCB.json');
+
+describe('PolygonZkEVMBridge Contract weird metadata', () => {
     let deployer;
     let rollup;
 
     let polygonZkEVMGlobalExitRoot;
     let polygonZkEVMBridgeContract;
     let tokenContract;
+    let alcbTokenContract;
 
     const tokenName = 'Matic Token';
     const tokenSymbol = 'MATIC';
@@ -28,6 +31,11 @@ describe('PolygonZkEVMBridge Contract werid metadata', () => {
         // load signers
         [deployer, rollup] = await ethers.getSigners();
 
+        // deploy ALCB token
+        const alcbTokenFactory = await ethers.getContractFactoryFromArtifact(ALCB);
+        alcbTokenContract = await alcbTokenFactory.deploy();
+        await alcbTokenContract.deployed();
+
         // deploy PolygonZkEVMBridge
         const polygonZkEVMBridgeFactory = await ethers.getContractFactory('PolygonZkEVMBridge');
         polygonZkEVMBridgeContract = await upgrades.deployProxy(polygonZkEVMBridgeFactory, [], { initializer: false });
@@ -36,7 +44,12 @@ describe('PolygonZkEVMBridge Contract werid metadata', () => {
         const polygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRoot');
         polygonZkEVMGlobalExitRoot = await polygonZkEVMGlobalExitRootFactory.deploy(rollup.address, polygonZkEVMBridgeContract.address);
 
-        await polygonZkEVMBridgeContract.initialize(networkIDMainnet, polygonZkEVMGlobalExitRoot.address, polygonZkEVMAddress);
+        await polygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            polygonZkEVMGlobalExitRoot.address,
+            polygonZkEVMAddress,
+            alcbTokenContract.address,
+        );
 
         // deploy token
         const maticTokenFactory = await ethers.getContractFactory('TokenWrapped');
@@ -66,6 +79,7 @@ describe('PolygonZkEVMBridge Contract werid metadata', () => {
             decimalsWeird,
         );
         await weirdTokenContract.deployed();
+        await polygonZkEVMBridgeContract.whitelistAsset(weirdTokenContract.address);
 
         // mint and approve tokens
         await weirdTokenContract.mint(deployer.address, tokenInitialBalance);
@@ -127,6 +141,7 @@ describe('PolygonZkEVMBridge Contract werid metadata', () => {
         // mint and approve tokens
         await weirdTokenContract.mint(deployer.address, tokenInitialBalance);
         await weirdTokenContract.approve(polygonZkEVMBridgeContract.address, tokenInitialBalance);
+        await polygonZkEVMBridgeContract.whitelistAsset(weirdTokenContract.address);
 
         const depositCount = await polygonZkEVMBridgeContract.depositCount();
         const originNetwork = networkIDMainnet;
@@ -189,6 +204,7 @@ describe('PolygonZkEVMBridge Contract werid metadata', () => {
             decimalsWeird,
         );
         await weirdTokenContract.deployed();
+        await polygonZkEVMBridgeContract.whitelistAsset(weirdTokenContract.address);
 
         // mint and approve tokens
         await weirdTokenContract.mint(deployer.address, tokenInitialBalance);

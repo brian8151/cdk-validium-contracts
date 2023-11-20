@@ -5,6 +5,7 @@ const { ethers, upgrades } = require('hardhat');
 const { Scalar } = require('ffjavascript');
 
 const { contractUtils } = require('@0xpolygonhermez/zkevm-commonjs');
+const ALCB = require('../../../compiled-contracts/ALCB.json');
 
 const { generateSolidityInputs } = contractUtils;
 
@@ -17,6 +18,7 @@ const inputJson = require('./test-inputs/input.json');
 describe('Real flow test', () => {
     let verifierContract;
     let maticTokenContract;
+    let alcbTokenContract;
     let PolygonZkEVMBridgeContract;
     let cdkValidiumContract;
     let PolygonZkEVMGlobalExitRoot;
@@ -73,6 +75,11 @@ describe('Real flow test', () => {
             maticTokenInitialBalance,
         );
         await maticTokenContract.deployed();
+
+        // deploy ALCB token
+        const alcbTokenFactory = await ethers.getContractFactoryFromArtifact(ALCB);
+        alcbTokenContract = await alcbTokenFactory.deploy();
+        await alcbTokenContract.deployed();
 
         /*
          * deploy global exit root manager
@@ -132,7 +139,12 @@ describe('Real flow test', () => {
         expect(precalculateCommitteeAddress).to.be.equal(cdkDataCommitteeContract.address);
         expect(precalculateCDKValidiumAddress).to.be.equal(cdkValidiumContract.address);
 
-        await PolygonZkEVMBridgeContract.initialize(networkIDMainnet, PolygonZkEVMGlobalExitRoot.address, cdkValidiumContract.address);
+        await PolygonZkEVMBridgeContract.initialize(
+            networkIDMainnet,
+            PolygonZkEVMGlobalExitRoot.address,
+            cdkValidiumContract.address,
+            alcbTokenContract.address
+        );
         await cdkValidiumContract.initialize(
             {
                 admin: admin.address,
