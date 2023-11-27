@@ -152,7 +152,7 @@ describe('CDKValidium', () => {
 
     it('should check the constructor parameters', async () => {
         expect(await cdkValidiumContract.globalExitRootManager()).to.be.equal(PolygonZkEVMGlobalExitRoot.address);
-        expect(await cdkValidiumContract.matic()).to.be.equal(maticTokenContract.address);
+        expect(await cdkValidiumContract.paymentToken()).to.be.equal(maticTokenContract.address);
         expect(await cdkValidiumContract.rollupVerifier()).to.be.equal(verifierContract.address);
         expect(await cdkValidiumContract.bridgeAddress()).to.be.equal(PolygonZkEVMBridgeContract.address);
 
@@ -168,9 +168,8 @@ describe('CDKValidium', () => {
         expect(await cdkValidiumContract.trustedSequencerURL()).to.be.equal(urlSequencer);
         expect(await cdkValidiumContract.networkName()).to.be.equal(networkName);
 
-        expect(await cdkValidiumContract.batchFee()).to.be.equal(ethers.utils.parseEther('0.1'));
-        expect(await cdkValidiumContract.batchFee()).to.be.equal(ethers.utils.parseEther('0.1'));
-        expect(await cdkValidiumContract.getForcedBatchFee()).to.be.equal(ethers.utils.parseEther('10'));
+        expect(await cdkValidiumContract.batchFee()).to.be.equal(ethers.utils.parseEther('0.001'));
+        expect(await cdkValidiumContract.getForcedBatchFee()).to.be.equal(ethers.utils.parseEther('0.1'));
 
         expect(await cdkValidiumContract.forceBatchTimeout()).to.be.equal(FORCE_BATCH_TIMEOUT);
         expect(await cdkValidiumContract.isForcedBatchDisallowed()).to.be.equal(true);
@@ -244,6 +243,13 @@ describe('CDKValidium', () => {
         expect(await cdkValidiumContract.trustedAggregatorTimeout()).to.be.equal(trustedAggregatorTimeoutDefault);
         expect(await cdkValidiumContract.pendingStateTimeout()).to.be.equal(pendingStateTimeoutDefault);
         expect(await cdkValidiumContract.admin()).to.be.equal(admin.address);
+
+        // set batchFee
+        await expect(cdkValidiumContract.setBatchFee(1000)).to.be.revertedWith('OnlyAdmin');
+
+        await cdkValidiumContract.connect(admin).setBatchFee(1000);
+
+        expect(await cdkValidiumContract.batchFee()).to.be.equal(1000);
 
         // setTrustedSequencer
         await expect(cdkValidiumContract.setTrustedSequencer(deployer.address))
@@ -2061,7 +2067,7 @@ describe('CDKValidium', () => {
 
         // Assert currentFee
         let currentBatchFee = await cdkValidiumContract.batchFee();
-        expect(currentBatchFee).to.be.equal(ethers.utils.parseEther('0.1'));
+        expect(currentBatchFee).to.be.equal(ethers.utils.parseEther('0.001'));
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [currentTimestamp + verifyBatchTimeTarget * 2]);
 

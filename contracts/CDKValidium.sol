@@ -145,8 +145,8 @@ contract CDKValidium is
     // Max uint64
     uint256 internal constant _MAX_UINT_64 = type(uint64).max; // 0xFFFFFFFFFFFFFFFF
 
-    // MATIC token address
-    IERC20Upgradeable public immutable matic;
+    // Payment token address
+    IERC20Upgradeable public immutable paymentToken;
 
     // Rollup verifier interface
     IVerifierRollup public immutable rollupVerifier;
@@ -176,7 +176,7 @@ contract CDKValidium is
     // Trusted sequencer address
     address public trustedSequencer;
 
-    // Current matic fee per batch sequenced
+    // Current payment token fee per batch sequenced
     uint256 public batchFee;
 
     // Queue of forced batches with their associated data
@@ -373,7 +373,7 @@ contract CDKValidium is
 
     /**
      * @param _globalExitRootManager Global exit root manager address
-     * @param _matic MATIC token address
+     * @param _paymentToken token address used to pay aggregators
      * @param _rollupVerifier Rollup verifier address
      * @param _bridgeAddress Bridge address
      * @param _dataCommitteeAddress Data committee address
@@ -382,7 +382,7 @@ contract CDKValidium is
      */
     constructor(
         IPolygonZkEVMGlobalExitRoot _globalExitRootManager,
-        IERC20Upgradeable _matic,
+        IERC20Upgradeable _paymentToken,
         IVerifierRollup _rollupVerifier,
         IPolygonZkEVMBridge _bridgeAddress,
         ICDKDataCommittee _dataCommitteeAddress,
@@ -390,10 +390,10 @@ contract CDKValidium is
         uint64 _forkID
     ) {
         globalExitRootManager = _globalExitRootManager;
-        matic = _matic;
+        paymentToken = _paymentToken;
         rollupVerifier = _rollupVerifier;
         bridgeAddress = _bridgeAddress;
-        dataCommitteeAddress = _dataCommitteeAddress;   
+        dataCommitteeAddress = _dataCommitteeAddress;
         chainID = _chainID;
         forkID = _forkID;
     }
@@ -438,7 +438,7 @@ contract CDKValidium is
             .trustedAggregatorTimeout;
 
         // Constant deployment variables
-        batchFee = 0.1 ether; // 0.1 Matic
+        batchFee = 0.001 ether;
         verifyBatchTimeTarget = 30 minutes;
         multiplierBatchFee = 1002;
         forceBatchTimeout = 5 days;
@@ -585,7 +585,7 @@ contract CDKValidium is
 
         // Validate that the data committee has signed the accInputHash for this sequence
         dataCommitteeAddress.verifySignatures(currentAccInputHash, signaturesAndAddrs);
-        
+
         // Update currentBatchSequenced
         currentBatchSequenced += uint64(batchesNum);
 
@@ -612,7 +612,7 @@ contract CDKValidium is
             lastForceBatchSequenced = currentLastForceBatchSequenced;
 
         // Pay collateral for every non-forced batch submitted
-        matic.safeTransferFrom(
+        paymentToken.safeTransferFrom(
             msg.sender,
             address(this),
             batchFee * nonForcedBatchesSequenced
@@ -822,7 +822,7 @@ contract CDKValidium is
         }
 
         // Get MATIC reward
-        matic.safeTransfer(
+        paymentToken.safeTransfer(
             msg.sender,
             calculateRewardPerBatch() *
                 (finalNewBatch - currentLastVerifiedBatch)
@@ -1033,7 +1033,7 @@ contract CDKValidium is
             revert TransactionsLengthAboveMax();
         }
 
-        matic.safeTransferFrom(msg.sender, address(this), maticFee);
+        paymentToken.safeTransferFrom(msg.sender, address(this), maticFee);
 
         // Get globalExitRoot global exit root
         bytes32 lastGlobalExitRoot = globalExitRootManager
@@ -1200,6 +1200,16 @@ contract CDKValidium is
         trustedAggregator = newTrustedAggregator;
 
         emit SetTrustedAggregator(newTrustedAggregator);
+    }
+
+    /**
+     * @notice Allow the admin to set a new newBatchFee
+     * @param newBatchFee New batch fee
+     */
+    function setBatchFee(
+        uint256 newBatchFee
+    ) external onlyAdmin {
+        batchFee = newBatchFee;
     }
 
     /**
@@ -1618,7 +1628,7 @@ contract CDKValidium is
      * @notice Function to calculate the reward to verify a single batch
      */
     function calculateRewardPerBatch() public view returns (uint256) {
-        uint256 currentBalance = matic.balanceOf(address(this));
+        uint256 currentBalance = paymentToken.balanceOf(address(this));
 
         // Total Sequenced Batches = forcedBatches to be sequenced (total forced Batches - sequenced Batches) + sequencedBatches
         // Total Batches to be verified = Total Sequenced Batches - verified Batches

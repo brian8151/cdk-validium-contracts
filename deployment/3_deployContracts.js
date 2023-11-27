@@ -53,7 +53,7 @@ async function main() {
         'minDelayTimelock',
         'salt',
         'cdkValidiumDeployerAddress',
-        'maticTokenAddress',
+        'paymentTokenAddress',
         'setupEmptyCommittee',
         'committeeTimelock',
     ];
@@ -81,7 +81,7 @@ async function main() {
         minDelayTimelock,
         salt,
         cdkValidiumDeployerAddress,
-        maticTokenAddress,
+        paymentTokenAddress,
         setupEmptyCommittee,
         committeeTimelock,
     } = deployParameters;
@@ -377,7 +377,7 @@ async function main() {
     console.log('#######################');
     console.log('deployer:', deployer.address);
     console.log('PolygonZkEVMGlobalExitRootAddress:', PolygonZkEVMGlobalExitRoot.address);
-    console.log('maticTokenAddress:', maticTokenAddress);
+    console.log('paymentTokenAddress:', paymentTokenAddress);
     console.log('verifierAddress:', verifierContract.address);
     console.log('PolygonZkEVMBridgeContract:', PolygonZkEVMBridgeContract.address);
 
@@ -418,7 +418,7 @@ async function main() {
                     {
                         constructorArgs: [
                             PolygonZkEVMGlobalExitRoot.address,
-                            maticTokenAddress,
+                            paymentTokenAddress,
                             verifierContract.address,
                             PolygonZkEVMBridgeContract.address,
                             cdkDataCommitteeContract.address,
@@ -482,7 +482,7 @@ async function main() {
     console.log('#####    Checks  CDKValidium  #####');
     console.log('#######################');
     console.log('PolygonZkEVMGlobalExitRootAddress:', await cdkValidiumContract.globalExitRootManager());
-    console.log('maticTokenAddress:', await cdkValidiumContract.matic());
+    console.log('paymentTokenAddress:', await cdkValidiumContract.paymentToken());
     console.log('verifierAddress:', await cdkValidiumContract.rollupVerifier());
     console.log('PolygonZkEVMBridgeContract:', await cdkValidiumContract.bridgeAddress());
 
@@ -563,7 +563,7 @@ async function main() {
         polygonZkEVMBridgeAddress: PolygonZkEVMBridgeContract.address,
         polygonZkEVMGlobalExitRootAddress: PolygonZkEVMGlobalExitRoot.address,
         cdkDataCommitteeContract: cdkDataCommitteeContract.address,
-        maticTokenAddress,
+        paymentTokenAddress: paymentTokenAddress,
         verifierAddress: verifierContract.address,
         cdkValidiumDeployerContract: cdkValidiumDeployerContract.address,
         deployerAddress: deployer.address,
