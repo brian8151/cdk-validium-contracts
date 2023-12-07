@@ -19,7 +19,9 @@ const pathOZUpgradability = path.join(__dirname, `../.openzeppelin/${process.env
 async function main() {
     // Check that there's no previous OZ deployment
     if (fs.existsSync(pathOZUpgradability)) {
-        throw new Error(`There's upgradability information from previous deployments, it's mandatory to erase them before start a new one, path: ${pathOZUpgradability}`);
+        throw new Error(
+            `There's upgradability information from previous deployments, it's mandatory to erase them before start a new one, path: ${pathOZUpgradability}`,
+        );
     }
 
     // Check if there's an ongoing deployment
@@ -53,6 +55,7 @@ async function main() {
         'minDelayTimelock',
         'salt',
         'cdkValidiumDeployerAddress',
+        'gasTokenAddress',
         'paymentTokenAddress',
         'setupEmptyCommittee',
         'committeeTimelock',
@@ -81,18 +84,47 @@ async function main() {
         minDelayTimelock,
         salt,
         cdkValidiumDeployerAddress,
+        gasTokenAddress,
         paymentTokenAddress,
         setupEmptyCommittee,
         committeeTimelock,
     } = deployParameters;
 
+    let committeeMembersAddresses = [''];
+    let committeeMembersURLs = [''];
+    let committeeMembersThreshold = 0;
+    let committeeMembersAddressesConcatenated = '';
+    if (!deployParameters.setupEmptyCommittee) {
+        console.log('Setup empty committee is false, setting up committee members parameters');
+        const committeeLength = deployParameters.committeeMembersAddresses.length;
+        if (committeeLength === 0) {
+            throw new Error('The committee members addresses must be greater than 0');
+        }
+        if (committeeLength !== deployParameters.committeeMembersURLs.length) {
+            throw new Error('The number of committee members addresses and URLs must be equal');
+        }
+        if (deployParameters.committeeMembersThreshold === 0 || deployParameters.committeeMembersThreshold > committeeLength) {
+            throw new Error('The committee members threshold must be greater than 0 and less than the number of members');
+        }
+        committeeMembersAddresses = deployParameters.committeeMembersAddresses;
+        committeeMembersAddressesConcatenated = `0x${committeeMembersAddresses
+            .map((address) => ethers.utils.getAddress(address.toLowerCase()).slice(2))
+            .join('')}`;
+        committeeMembersURLs = deployParameters.committeeMembersURLs;
+        committeeMembersThreshold = deployParameters.committeeMembersThreshold;
+    }
+
     // Load provider
     let currentProvider = ethers.provider;
     if (deployParameters.multiplierGas || deployParameters.maxFeePerGas) {
         if (process.env.HARDHAT_NETWORK !== 'hardhat') {
-            currentProvider = new ethers.providers.JsonRpcProvider(`https://${process.env.HARDHAT_NETWORK}.infura.io/v3/${process.env.INFURA_PROJECT_ID}`);
+            currentProvider = new ethers.providers.JsonRpcProvider(
+                `https://${process.env.HARDHAT_NETWORK}.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+            );
             if (deployParameters.maxPriorityFeePerGas && deployParameters.maxFeePerGas) {
-                console.log(`Hardcoded gas used: MaxPriority${deployParameters.maxPriorityFeePerGas} gwei, MaxFee${deployParameters.maxFeePerGas} gwei`);
+                console.log(
+                    `Hardcoded gas used: MaxPriority:${deployParameters.maxPriorityFeePerGas} gwei, MaxFee:${deployParameters.maxFeePerGas} gwei`,
+                );
                 const FEE_DATA = {
                     maxFeePerGas: ethers.utils.parseUnits(deployParameters.maxFeePerGas, 'gwei'),
                     maxPriorityFeePerGas: ethers.utils.parseUnits(deployParameters.maxPriorityFeePerGas, 'gwei'),
@@ -118,10 +150,10 @@ async function main() {
         deployer = new ethers.Wallet(deployParameters.deployerPvtKey, currentProvider);
         console.log('Using pvtKey deployer with address: ', deployer.address);
     } else if (process.env.MNEMONIC) {
-        deployer = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, 'm/44\'/60\'/0\'/0/0').connect(currentProvider);
+        deployer = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, "m/44'/60'/0'/0/0").connect(currentProvider);
         console.log('Using MNEMONIC deployer with address: ', deployer.address);
     } else {
-        [deployer] = (await ethers.getSigners());
+        [deployer] = await ethers.getSigners();
     }
 
     // Load cdkValidium deployer
@@ -129,7 +161,7 @@ async function main() {
     const cdkValidiumDeployerContract = CDKValidiumDeployerFactory.attach(cdkValidiumDeployerAddress);
 
     // check deployer is the owner of the deployer
-    if (await deployer.provider.getCode(cdkValidiumDeployerContract.address) === '0x') {
+    if ((await deployer.provider.getCode(cdkValidiumDeployerContract.address)) === '0x') {
         throw new Error('cdkValidium deployer contract is not deployed');
     }
     expect(deployer.address).to.be.equal(await cdkValidiumDeployerContract.owner());
@@ -164,7 +196,7 @@ async function main() {
 
     // Deploy proxy admin:
     const proxyAdminFactory = await ethers.getContractFactory('ProxyAdmin', deployer);
-    const deployTransactionAdmin = (proxyAdminFactory.getDeployTransaction()).data;
+    const deployTransactionAdmin = proxyAdminFactory.getDeployTransaction().data;
     const dataCallAdmin = proxyAdminFactory.interface.encodeFunctionData('transferOwnership', [deployer.address]);
     const [proxyAdminAddress, isProxyAdminDeployed] = await create2Deployment(
         cdkValidiumDeployerContract,
@@ -184,7 +216,7 @@ async function main() {
 
     // Deploy implementation PolygonZkEVMBridge
     const PolygonZkEVMBridgeFactory = await ethers.getContractFactory('PolygonZkEVMBridge', deployer);
-    const deployTransactionBridge = (PolygonZkEVMBridgeFactory.getDeployTransaction()).data;
+    const deployTransactionBridge = PolygonZkEVMBridgeFactory.getDeployTransaction().data;
     const dataCallNull = null;
     // Mandatory to override the gasLimit since the estimation with create are mess up D:
     const overrideGasLimit = ethers.BigNumber.from(5500000);
@@ -211,28 +243,27 @@ async function main() {
      */
     const transparentProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy', deployer);
     const initializeEmptyDataProxy = '0x';
-    const deployTransactionProxy = (transparentProxyFactory.getDeployTransaction(
+    const deployTransactionProxy = transparentProxyFactory.getDeployTransaction(
         bridgeImplementationAddress,
         proxyAdminAddress,
         initializeEmptyDataProxy,
-    )).data;
+    ).data;
 
     /*
      * Nonce globalExitRoot: currentNonce + 1 (deploy bridge proxy) + 1(impl globalExitRoot
-     * + 1 (deploy data comittee proxy) + 1(impl data committee) + setupCommitte? = +4 or +5
+     * + 1 (deploy data comittee proxy) + 1(impl data committee) + 1 setupCommitte
      */
-    const nonceDelta = 4 + (setupEmptyCommittee ? 1 : 0);
-    const nonceProxyGlobalExitRoot = Number((await ethers.provider.getTransactionCount(deployer.address)))
-        + nonceDelta;
+    const nonceDelta = 5;
+    const nonceProxyGlobalExitRoot = Number(await ethers.provider.getTransactionCount(deployer.address)) + nonceDelta;
     // nonceProxyCDKValidium :Nonce globalExitRoot + 1 (proxy globalExitRoot) + 1 (impl cdk) = +2
     const nonceProxyCDKValidium = nonceProxyGlobalExitRoot + 2;
 
-    let precalculateGLobalExitRootAddress; let
-        precalculateCDKValidiumAddress;
+    let precalculateGlobalExitRootAddress;
+    let precalculateCDKValidiumAddress;
 
     // Check if the contract is already deployed
     if (ongoingDeployment.PolygonZkEVMGlobalExitRoot && ongoingDeployment.cdkValidiumContract) {
-        precalculateGLobalExitRootAddress = ongoingDeployment.PolygonZkEVMGlobalExitRoot;
+        precalculateGlobalExitRootAddress = ongoingDeployment.PolygonZkEVMGlobalExitRoot;
         precalculateCDKValidiumAddress = ongoingDeployment.cdkValidiumContract;
     } else {
         // If both are not deployed, it's better to deploy them both again
@@ -241,18 +272,22 @@ async function main() {
         fs.writeFileSync(pathOngoingDeploymentJson, JSON.stringify(ongoingDeployment, null, 1));
 
         // Contracts are not deployed, normal deployment
-        precalculateGLobalExitRootAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceProxyGlobalExitRoot });
-        precalculateCDKValidiumAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceProxyCDKValidium });
+        precalculateGlobalExitRootAddress = ethers.utils.getContractAddress({
+            from: deployer.address,
+            nonce: nonceProxyGlobalExitRoot,
+        });
+        precalculateCDKValidiumAddress = ethers.utils.getContractAddress({
+            from: deployer.address,
+            nonce: nonceProxyCDKValidium,
+        });
     }
 
-    const dataCallProxy = PolygonZkEVMBridgeFactory.interface.encodeFunctionData(
-        'initialize',
-        [
-            networkIDMainnet,
-            precalculateGLobalExitRootAddress,
-            precalculateCDKValidiumAddress,
-        ],
-    );
+    const dataCallProxy = PolygonZkEVMBridgeFactory.interface.encodeFunctionData('initialize', [
+        networkIDMainnet,
+        precalculateGlobalExitRootAddress,
+        precalculateCDKValidiumAddress,
+        gasTokenAddress,
+    ]);
     const [proxyBridgeAddress, isBridgeProxyDeployed] = await create2Deployment(
         cdkValidiumDeployerContract,
         salt,
@@ -270,7 +305,7 @@ async function main() {
         console.log('PolygonZkEVMBridge was already deployed to:', PolygonZkEVMBridgeContract.address);
 
         // If it was already deployed, check that the initialized calldata matches the actual deployment
-        expect(precalculateGLobalExitRootAddress).to.be.equal(await PolygonZkEVMBridgeContract.globalExitRootManager());
+        expect(precalculateGlobalExitRootAddress).to.be.equal(await PolygonZkEVMBridgeContract.globalExitRootManager());
         expect(precalculateCDKValidiumAddress).to.be.equal(await PolygonZkEVMBridgeContract.polygonZkEVMaddress());
     }
 
@@ -291,10 +326,7 @@ async function main() {
     const CDKDataCommitteeContractFactory = await ethers.getContractFactory('CDKDataCommittee', deployer);
     for (let i = 0; i < attemptsDeployProxy; i++) {
         try {
-            cdkDataCommitteeContract = await upgrades.deployProxy(
-                CDKDataCommitteeContractFactory,
-                [],
-            );
+            cdkDataCommitteeContract = await upgrades.deployProxy(CDKDataCommitteeContractFactory, []);
             break;
         } catch (error) {
             console.log(`attempt ${i}`);
@@ -312,11 +344,20 @@ async function main() {
 
     if (setupEmptyCommittee) {
         const expectedHash = ethers.utils.solidityKeccak256(['bytes'], [[]]);
-        await expect(cdkDataCommitteeContract.connect(deployer)
-            .setupCommittee(0, [], []))
+        await expect(cdkDataCommitteeContract.connect(deployer).setupCommittee(0, [], []))
             .to.emit(cdkDataCommitteeContract, 'CommitteeUpdated')
             .withArgs(expectedHash);
         console.log('Empty committee seted up');
+    } else {
+        const expectedHash = ethers.utils.solidityKeccak256(['bytes'], [committeeMembersAddressesConcatenated]);
+        await expect(
+            cdkDataCommitteeContract
+                .connect(deployer)
+                .setupCommittee(committeeMembersThreshold, committeeMembersURLs, committeeMembersAddressesConcatenated),
+        )
+            .to.emit(cdkDataCommitteeContract, 'CommitteeUpdated')
+            .withArgs(expectedHash);
+        console.log(`Committee set with ${committeeMembersAddresses} as members`);
     }
 
     /*
@@ -344,7 +385,7 @@ async function main() {
             }
         }
 
-        expect(precalculateGLobalExitRootAddress).to.be.equal(PolygonZkEVMGlobalExitRoot.address);
+        expect(precalculateGlobalExitRootAddress).to.be.equal(PolygonZkEVMGlobalExitRoot.address);
 
         console.log('#######################\n');
         console.log('PolygonZkEVMGlobalExitRoot deployed to:', PolygonZkEVMGlobalExitRoot.address);
@@ -354,7 +395,7 @@ async function main() {
         fs.writeFileSync(pathOngoingDeploymentJson, JSON.stringify(ongoingDeployment, null, 1));
     } else {
         // sanity check
-        expect(precalculateGLobalExitRootAddress).to.be.equal(PolygonZkEVMGlobalExitRoot.address);
+        expect(precalculateGlobalExitRootAddress).to.be.equal(PolygonZkEVMGlobalExitRoot.address);
         // Expect the precalculate address matches de onogin deployment
         PolygonZkEVMGlobalExitRoot = PolygonZkEVMGlobalExitRootFactory.attach(ongoingDeployment.PolygonZkEVMGlobalExitRoot);
 
@@ -501,7 +542,7 @@ async function main() {
 
     // Assert admin address
     expect(await upgrades.erc1967.getAdminAddress(precalculateCDKValidiumAddress)).to.be.equal(proxyAdminAddress);
-    expect(await upgrades.erc1967.getAdminAddress(precalculateGLobalExitRootAddress)).to.be.equal(proxyAdminAddress);
+    expect(await upgrades.erc1967.getAdminAddress(precalculateGlobalExitRootAddress)).to.be.equal(proxyAdminAddress);
     expect(await upgrades.erc1967.getAdminAddress(proxyBridgeAddress)).to.be.equal(proxyAdminAddress);
 
     const proxyAdminInstance = proxyAdminFactory.attach(proxyAdminAddress);
@@ -517,10 +558,7 @@ async function main() {
         expect(precalculateCDKValidiumAddress).to.be.equal(await timelockContract.cdkValidium());
 
         console.log('#######################\n');
-        console.log(
-            'Polygon timelockContract already deployed to:',
-            timelockContract.address,
-        );
+        console.log('Polygon timelockContract already deployed to:', timelockContract.address);
     } else {
         // deploy timelock
         console.log('\n#######################');
@@ -538,10 +576,7 @@ async function main() {
         );
         await timelockContract.deployed();
         console.log('#######################\n');
-        console.log(
-            'Polygon timelockContract deployed to:',
-            timelockContract.address,
-        );
+        console.log('Polygon timelockContract deployed to:', timelockContract.address);
 
         // Transfer ownership of the proxyAdmin to timelock
         const proxyAdminContract = proxyAdminFactory.attach(proxyAdminAddress);
@@ -563,7 +598,7 @@ async function main() {
         polygonZkEVMBridgeAddress: PolygonZkEVMBridgeContract.address,
         polygonZkEVMGlobalExitRootAddress: PolygonZkEVMGlobalExitRoot.address,
         cdkDataCommitteeContract: cdkDataCommitteeContract.address,
-        paymentTokenAddress: paymentTokenAddress,
+        paymentTokenAddress,
         verifierAddress: verifierContract.address,
         cdkValidiumDeployerContract: cdkValidiumDeployerContract.address,
         deployerAddress: deployer.address,
@@ -580,6 +615,9 @@ async function main() {
         forkID,
         salt,
         version,
+        committeeMembersAddresses,
+        committeeMembersURLs,
+        committeeMembersThreshold,
     };
     fs.writeFileSync(pathOutputJson, JSON.stringify(outputJson, null, 1));
 

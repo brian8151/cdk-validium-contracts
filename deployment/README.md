@@ -86,3 +86,22 @@ A new folder will be created witth the following name `deployments/${network}_$(
 - Since there are deterministic address you cannot deploy twice on the same network using the same `salt` and `initialCDKValidiumDeployerOwner`. Changing one of them is enough to make a new deployment.
 - It's mandatory to delete the `.openzeppelin` upgradebility information in order to make a new deployment
 - `genesis.json` has been generated using the tool: `1_createGenesis`, this script depends on the `deploy_parameters` aswell.
+
+
+## Deployment process
+
+- Create 6 accounts and generate the keystores files. Get the address of the accounts and the pvtKey of the deployer. The accounts will be:
+  - sequencer
+  - aggregator
+  - bridge claimer
+  - 3 dac
+- Update the deployment parameters with the information of the accounts and the payment token address
+- Create the Genesis
+- Deploy the deployer
+- Deploy the CDKValidium contracts
+- Get all info files and deploy the services
+- Using the sequence account approve the CDKValidium to spend the payment token
+- Fund the sequencer account with the payment token
+- Setup the payment amount (per sequence) in the cdk validium contract
+- Setup the sequencer URL in the cdk validium contract
+- Setup the DACs URLs in the data committee contract
