@@ -15,6 +15,15 @@ cp .env.example .env
 Fill `.env` with your `MNEMONIC` and `INFURA_PROJECT_ID`
 If you want to verify the contracts also fill the `ETHERSCAN_API_KEY`
 
+For testnet usage you can generate wallets with the wallet.js script
+
+Navigate to `testnet` folder and run 
+
+`node wallet.js` 
+
+or from root directory
+`npx hardhat run deployment/testnet/wallets.js`
+
 ```
 cd deployment
 cp deploy_parameters.json.example deploy_parameters.json
