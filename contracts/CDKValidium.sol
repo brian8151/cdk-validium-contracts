@@ -344,7 +344,7 @@ contract CDKValidium is
     /**
      * @dev Emitted when admin updates state of matic transfers
      */
-    event SetMaticTransferDisabled(bool isFeeTransferDisabled);
+    event SetMaticTransferDisabled(bool feeTransferDisabled);
 
     /**
      * @dev Emitted when the admin starts the two-step transfer role setting a new pending admin
