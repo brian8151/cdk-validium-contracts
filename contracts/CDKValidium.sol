@@ -246,6 +246,9 @@ contract CDKValidium is
     // Indicates if forced batches are disallowed
     bool public isForcedBatchDisallowed;
 
+    // Indicates if the MATIC transfer is disabled on sequencing/verifying (default: false)
+    bool public isFeeTransferDisabled;
+
     /**
      * @dev Emitted when the trusted sequencer sends a new batch of transactions
      */
@@ -337,6 +340,11 @@ contract CDKValidium is
      * @dev Emitted when activate force batches
      */
     event ActivateForceBatches();
+
+    /**
+     * @dev Emitted when admin updates state of matic transfers
+     */
+    event SetMaticTransferDisabled(bool feeTransferDisabled);
 
     /**
      * @dev Emitted when the admin starts the two-step transfer role setting a new pending admin
@@ -594,8 +602,6 @@ contract CDKValidium is
             revert ForceBatchesOverflow();
         }
 
-        uint256 nonForcedBatchesSequenced = batchesNum -
-            (currentLastForceBatchSequenced - initLastForceBatchSequenced);
 
         // Update sequencedBatches mapping
         sequencedBatches[currentBatchSequenced] = SequencedBatchData({
@@ -611,12 +617,18 @@ contract CDKValidium is
         if (currentLastForceBatchSequenced != initLastForceBatchSequenced)
             lastForceBatchSequenced = currentLastForceBatchSequenced;
 
+        if (!isFeeTransferDisabled) {
+
+            uint256 nonForcedBatchesSequenced = batchesNum -
+            (currentLastForceBatchSequenced - initLastForceBatchSequenced);
+
+            matic.safeTransferFrom(
+                msg.sender,
+                address(this),
+                batchFee * nonForcedBatchesSequenced
+            );
+        }
         // Pay collateral for every non-forced batch submitted
-        matic.safeTransferFrom(
-            msg.sender,
-            address(this),
-            batchFee * nonForcedBatchesSequenced
-        );
 
         // Consolidate pending state if possible
         _tryConsolidatePendingState();
@@ -822,11 +834,13 @@ contract CDKValidium is
         }
 
         // Get MATIC reward
-        matic.safeTransfer(
-            msg.sender,
-            calculateRewardPerBatch() *
-                (finalNewBatch - currentLastVerifiedBatch)
-        );
+        if (!isFeeTransferDisabled) {
+            matic.safeTransfer(
+                msg.sender,
+                calculateRewardPerBatch() *
+                    (finalNewBatch - currentLastVerifiedBatch)
+            );
+        }
     }
 
     /**
@@ -1022,18 +1036,21 @@ contract CDKValidium is
         bytes calldata transactions,
         uint256 maticAmount
     ) public isForceBatchAllowed ifNotEmergencyState {
-        // Calculate matic collateral
-        uint256 maticFee = getForcedBatchFee();
-
-        if (maticFee > maticAmount) {
-            revert NotEnoughMaticAmount();
-        }
 
         if (transactions.length > _MAX_FORCE_BATCH_BYTE_LENGTH) {
             revert TransactionsLengthAboveMax();
         }
 
-        matic.safeTransferFrom(msg.sender, address(this), maticFee);
+        if (!isFeeTransferDisabled) {
+            // Calculate matic collateral
+            uint256 maticFee = getForcedBatchFee();
+
+            if (maticFee > maticAmount) {
+                revert NotEnoughMaticAmount();
+            }
+            
+            matic.safeTransferFrom(msg.sender, address(this), maticFee);
+        }
 
         // Get globalExitRoot global exit root
         bytes32 lastGlobalExitRoot = globalExitRootManager
@@ -1189,7 +1206,7 @@ contract CDKValidium is
 
         emit SetTrustedSequencerURL(newTrustedSequencerURL);
     }
-
+    
     /**
      * @notice Allow the admin to set a new trusted aggregator address
      * @param newTrustedAggregator Address of the new trusted aggregator
@@ -1310,6 +1327,27 @@ contract CDKValidium is
         isForcedBatchDisallowed = false;
         emit ActivateForceBatches();
     }
+
+
+    /**
+     * @notice Allow the admin to disable matic fee transfers for sequence and verify batches
+     */
+    function disableBatchFee() external onlyAdmin {
+        isFeeTransferDisabled = true;
+
+        emit SetMaticTransferDisabled(true);
+    }
+
+
+    /**
+     * @notice Allow the admin to enable matic fee transfers for sequence and verify batches
+     */
+    function enableBatchFee() external onlyAdmin {
+        isFeeTransferDisabled = false;
+
+        emit SetMaticTransferDisabled(true);
+    }
+
 
     /**
      * @notice Starts the admin role transfer
@@ -1666,7 +1704,7 @@ contract CDKValidium is
             abi.encodePacked(
                 msg.sender,
                 oldStateRoot,
-                oldAccInputHash,
+            oldAccInputHash,
                 initNumBatch,
                 chainID,
                 forkID,
