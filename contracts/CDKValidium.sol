@@ -247,7 +247,7 @@ contract CDKValidium is
     bool public isForcedBatchDisallowed;
 
     // Indicates if the MATIC transfer is disabled on sequencing/verifying (default: false)
-    bool public isMaticTransferDisabled;
+    bool public isFeeTransferDisabled;
 
     /**
      * @dev Emitted when the trusted sequencer sends a new batch of transactions
@@ -340,6 +340,11 @@ contract CDKValidium is
      * @dev Emitted when activate force batches
      */
     event ActivateForceBatches();
+
+    /**
+     * @dev Emitted when admin updates state of matic transfers
+     */
+    event SetMaticTransferDisabled(bool isFeeTransferDisabled);
 
     /**
      * @dev Emitted when the admin starts the two-step transfer role setting a new pending admin
@@ -612,7 +617,7 @@ contract CDKValidium is
         if (currentLastForceBatchSequenced != initLastForceBatchSequenced)
             lastForceBatchSequenced = currentLastForceBatchSequenced;
 
-        if (!isMaticTransferDisabled) {
+        if (!isFeeTransferDisabled) {
 
             uint256 nonForcedBatchesSequenced = batchesNum -
             (currentLastForceBatchSequenced - initLastForceBatchSequenced);
@@ -829,7 +834,7 @@ contract CDKValidium is
         }
 
         // Get MATIC reward
-        if (!isMaticTransferDisabled) {
+        if (!isFeeTransferDisabled) {
             matic.safeTransfer(
                 msg.sender,
                 calculateRewardPerBatch() *
@@ -1036,7 +1041,7 @@ contract CDKValidium is
             revert TransactionsLengthAboveMax();
         }
 
-        if (!isMaticTransferDisabled) {
+        if (!isFeeTransferDisabled) {
             // Calculate matic collateral
             uint256 maticFee = getForcedBatchFee();
 
@@ -1201,7 +1206,7 @@ contract CDKValidium is
 
         emit SetTrustedSequencerURL(newTrustedSequencerURL);
     }
-
+    
     /**
      * @notice Allow the admin to set a new trusted aggregator address
      * @param newTrustedAggregator Address of the new trusted aggregator
@@ -1322,6 +1327,27 @@ contract CDKValidium is
         isForcedBatchDisallowed = false;
         emit ActivateForceBatches();
     }
+
+
+    /**
+     * @notice Allow the admin to disable matic fee transfers for sequence and verify batches
+     */
+    function disableBatchFee() external onlyAdmin {
+        isFeeTransferDisabled = true;
+
+        emit SetMaticTransferDisabled(true);
+    }
+
+
+    /**
+     * @notice Allow the admin to enable matic fee transfers for sequence and verify batches
+     */
+    function enableBatchFee() external onlyAdmin {
+        isFeeTransferDisabled = true;
+
+        emit SetMaticTransferDisabled(true);
+    }
+
 
     /**
      * @notice Starts the admin role transfer
