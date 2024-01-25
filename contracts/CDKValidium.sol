@@ -1343,7 +1343,7 @@ contract CDKValidium is
      * @notice Allow the admin to enable matic fee transfers for sequence and verify batches
      */
     function enableBatchFee() external onlyAdmin {
-        isFeeTransferDisabled = true;
+        isFeeTransferDisabled = false;
 
         emit SetMaticTransferDisabled(true);
     }
