@@ -89,33 +89,35 @@ async function main() {
             {
                 address: deployOutputParameters.cdkValidiumAddress,
                 constructorArguments: [
-                    deployOutputParameters.PolygonZkEVMGlobalExitRootAddress,
+                    deployOutputParameters.polygonZkEVMGlobalExitRootAddress,
                     deployOutputParameters.maticTokenAddress,
                     deployOutputParameters.verifierAddress,
-                    deployOutputParameters.PolygonZkEVMBridgeAddress,
+                    deployOutputParameters.polygonZkEVMBridgeAddress,
                     deployOutputParameters.cdkDataCommitteeContract,
                     deployOutputParameters.chainID,
                     deployOutputParameters.forkID,
                 ],
             },
-        );
-    } catch (error) {
-        expect(error.message.toLowerCase().includes('proxyadmin')).to.be.equal(true);
-    }
-
+            );
+        } catch (error) {
+            console.log(error.message.toLowerCase());
+            expect(error.message.toLowerCase().includes('proxyadmin')).to.be.equal(true);
+        }
+        
     // verify global exit root address
     try {
         await hre.run(
             'verify:verify',
             {
-                address: deployOutputParameters.PolygonZkEVMGlobalExitRootAddress,
+                address: deployOutputParameters.polygonZkEVMGlobalExitRootAddress,
                 constructorArguments: [
                     deployOutputParameters.cdkValidiumAddress,
-                    deployOutputParameters.PolygonZkEVMBridgeAddress,
+                    deployOutputParameters.polygonZkEVMBridgeAddress,
                 ],
             },
         );
     } catch (error) {
+        console.log(error.message.toLowerCase());
         expect(error.message.toLowerCase().includes('proxyadmin')).to.be.equal(true);
     }
 
@@ -123,16 +125,21 @@ async function main() {
         await hre.run(
             'verify:verify',
             {
-                address: deployOutputParameters.PolygonZkEVMBridgeAddress,
+                address: deployOutputParameters.polygonZkEVMBridgeAddress,
             },
         );
     } catch (error) {
+        console.log(error.message.toLowerCase());
         expect(error.message.toLowerCase().includes('proxyadmin')).to.be.equal(true);
     }
+    
 }
 
 main()
-    .then(() => process.exit(0))
+    .then(() => { 
+        console.log("finished");
+        process.exit(0);
+    })
     .catch((error) => {
         console.error(error);
         process.exit(1);

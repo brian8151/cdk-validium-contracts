@@ -1,0 +1,37 @@
+[PrivateKey]
+Path = "/pk/dac-member.keystore"
+Password = "password"
+
+[L1]
+WsURL = "wss://necessary-orbital-fire.ethereum-sepolia.quiknode.pro/f61e5ec9632e79b9b09730f62536d41a2c033259"
+RpcURL = "https://sepolia.polygon.tst.validationcloud.io"
+CDKValidiumAddress = "0x113930091e35803c339616Af2aE8C51dB66EB346"
+DataCommitteeAddress = "0x646BB9E96573CcB54C602D366EB04e0c08f752b2"
+Timeout = "3m"
+RetryPeriod = "5s"
+
+[Log]
+Environment = "development"
+Level = "debug"
+Outputs = ["stderr"]
+
+[DB]
+User = "committee_user"
+Password = "committee_password"
+Name = "committee_db"
+Host = "cdk-data-availability-db"
+Port = "5432"
+EnableLog = false
+MaxConns = 200
+
+[RPC]
+Host = "0.0.0.0"
+Port = 8444
+ReadTimeout = "60s"
+WriteTimeout = "60s"
+MaxRequestsPerIPAndSecond = 500
+SequencerNodeURI = ""
+EnableL2SuggestedGasPricePolling = false
+
+[RPC.WebSockets]
+Enabled = false
