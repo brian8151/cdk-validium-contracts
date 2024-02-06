@@ -13,61 +13,70 @@ install_dependencies:
 	npm install
 	pip install pytoml
 
-./wallets.json: install_dependencies
-	node wallets.js | tee wallets.json > ./wallets.json
+./wallets.json:
+	@node wallets.js | tee wallets.json > ./wallets.json
+	$(eval NEW_PRIV_KEY_HEX := $(shell jq -r '.["Deployment Address"].PrvKey' wallets.json))
+	@echo "Private key: $(NEW_PRIV_KEY_HEX)"
 
 # Create wallet, address mappings, and set admin address
 ./deployment/deploy_parameters.json: ./wallets.json
 	python3 ./scripts/map_addresses.py ./wallets.json > ./deployment/deploy_parameters.json
 
-deposit: ./deployment/deploy_parameters.json
+./output/01_deposit: ./deployment/deploy_parameters.json
 	@read -p "Deposit some sepolia ETH to $(shell jq -r '.admin' ./deployment/deploy_parameters.json) and press enter to continue"
+	touch ./output/01_deposit
 
 # Update .env file with new deployer mnemonic
-update_env: deposit
+./.env: ./output/01_deposit
 	if [ ! -f .env ]; then cp .env.example .env; fi
 	$(eval NEW_PRIV_KEY := $(shell jq -r '.["Deployment Address"].mnemonic' wallets.json))
-	sed -i "s/MNEMONIC=.*/MNEMONIC=\"$(NEW_PRIV_KEY)\"/" .env
+	@sed -i "s/MNEMONIC=.*/MNEMONIC=\"$(NEW_PRIV_KEY)\"/" .env
 
-./output/deploy_cdk_validium.log: update_env
-	npx hardhat run deployment/2_deployCDKValidiumDeployer.js --network sepolia > ./output/deploy_cdk_validium.log
-	cat ./output/deploy_cdk_validium.log
+./output/02_deploy_cdk_validium: ./.env
+	npx hardhat run deployment/2_deployCDKValidiumDeployer.js --network sepolia 
+	touch ./output/02_deploy_cdk_validium
 	sleep 60
 
-./output/verify_cdk_validium_deployer.log: ./output/deploy_cdk_validium.log
-	npx hardhat run deployment/verifyCDKValidiumDeployer.js --network sepolia > ./output/verify_cdk_validium_deployer.log
-	cat ./output/verify_cdk_validium_deployer.log
+./output/03_verify_cdk_validium_deployer: ./output/02_deploy_cdk_validium
+	npx hardhat run deployment/verifyCDKValidiumDeployer.js --network sepolia 
+	touch ./output/03_verify_cdk_validium_deployer
 
-./output/prepare_testnet.log: ./output/verify_cdk_validium_deployer.log
-	npx hardhat run deployment/testnet/prepareTestnet.js --network sepolia > ./output/prepare_testnet.log
-	cat ./output/prepare_testnet.log
+./output/04_prepare_testnet: ./output/03_verify_cdk_validium_deployer
+	npx hardhat run deployment/testnet/prepareTestnet.js --network sepolia 
+	touch ./output/04_prepare_testnet
+	# since deoloy_parameters are updated, we need to update the timestamp so we don't have dependency recursion
+	python3 scripts/touch.py ./output/deposit ./deployment/deploy_parameters.json
+	python3 scripts/touch.py ./deployment/deploy_parameters.json ./wallets.json
 
-./output/create_genesis.log: ./output/prepare_testnet.log
-	node deployment/1_createGenesis.js > ./output/create_genesis.log
-	cat ./output/create_genesis.log
+./output/05_create_genesis: ./output/04_prepare_testnet
+	node deployment/1_createGenesis.js 
+	touch ./output/05_create_genesis
 
-./output/deploy_contracts.log: ./output/create_genesis.log
-	npx hardhat run deployment/3_deployContracts.js --network sepolia > ./output/deploy_contracts.log
-	cat ./output/deploy_contracts.log
+./output/06_deploy_contracts: ./output/05_create_genesis
+	npx hardhat run deployment/3_deployContracts.js --network sepolia 
+	touch ./output/06_deploy_contracts
+	
+./output/07_save_deployment: ./output/06_deploy_contracts
+	@echo -n "Saving deployment to .openzeppelin/sepolia.json... "
+	@npm run saveDeployment:sepolia
+	@echo "Done"
+	touch ./output/07_save_deployment
 
-.openzeppelin/sepolia.json: ./output/deploy_contracts.log
-	npm run saveDeployment:sepolia
-
-./deployments/sepolia: .openzeppelin/sepolia.json
+./deployments/sepolia: 07_save_deployment
 	mkdir -p deployments/sepolia
 	cp -r deployment/deploy_*.json deployments/sepolia
 	cp .openzeppelin/sepolia.json deployments/sepolia
 	cp deployment/genesis.json deployments/sepolia/genesis.original.json
 
-./output/verify_cdk_validium.log: ./deployments/sepolia
+./output/08_verify_cdk_validium: ./deployments/sepolia
 	# https://forum.openzeppelin.com/t/proxyadmin-verification-error/32421/4
 	# https://github.com/OpenZeppelin/openzeppelin-upgrades/issues/674
-	npm run verify:CDKValidium:sepolia > ./output/verify_cdk_validium.log
-	cat ./output/verify_cdk_validium.log
+	npm run verify:CDKValidium:sepolia
+	touch ./output/08_verify_cdk_validium
 
 # Update genesis with l1config object
 
-./deployments/sepolia/genesis.json: ./output/verify_cdk_validium.log
+./deployments/sepolia/genesis.json: ./output/08_verify_cdk_validium
 	@python3 ./scripts/update_gen.py > ./deployments/sepolia/genesis.json
 	@echo "Created ./deployments/sepolia/genesis.json"
 
@@ -96,15 +105,6 @@ clean:
 		./deployments/sepolia/genesis.json \
 		.openzeppelin/sepolia.json \
 		./deployments/sepolia \
-		./output \
+		./output/*
 
-
-lastlog:
-	cat ./output/deploy_cdk_validium.log
-	cat ./output/verify_cdk_validium_deployer.log
-	cat ./output/prepare_testnet.log
-	cat ./output/create_genesis.log
-	cat ./output/deploy_contracts.log
-	cat ./output/verify_cdk_validium.log
-
-.PHONY: all install_dependencies update_env clean deposit lastlog
+.PHONY: all install_dependencies update_env clean deposit
