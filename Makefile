@@ -71,7 +71,7 @@ update_env: deposit
 	@python3 ./scripts/update_gen.py > ./deployments/sepolia/genesis.json
 	@echo "Created ./deployments/sepolia/genesis.json"
 
-./deployment/dac.config.toml: ./deployments/sepolia/genesis.json:
+./deployment/dac.config.toml: ./deployments/sepolia/genesis.json
 	@python3 ./scripts/toml_config.py
 	@echo "Created ./deployment/dac.config.toml"
 	@echo "Created ./deployment/bridge.config.toml"
@@ -85,17 +85,19 @@ update_env: deposit
 
 # Clean up targets (if necessary)
 clean:
-	rm -rf \
+	@rm -rf \
 		deployment/bridge.config.toml \
 		deployment/dac.config.toml \
 		deployment/node.config.toml \
+		deployment/deploy_ongoing.json \
 		new_genesis.json \
 		wallets.json \
 		deployment/deploy_parameters.json \
 		./deployments/sepolia/genesis.json \
 		.openzeppelin/sepolia.json \
 		./deployments/sepolia \
-		./output
+		./output \
+
 
 lastlog:
 	cat ./output/deploy_cdk_validium.log
