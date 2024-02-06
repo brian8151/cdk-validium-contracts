@@ -33,10 +33,4 @@ genesis["genesis"] = genesis_data.get("genesis")
 
 output_json = json.dumps(genesis, indent=2)
 
-full_path = os.path.join('deployments', "deploy_parameters.json")
-
-# Write the updated data back to genesis.json
-with open('./deployments/sepolia/genesis.json', "w") as file:
-    file.write(output_json)
-
-print(f"Output written to {full_path}")
+print(output_json)

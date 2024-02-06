@@ -18,3 +18,5 @@ deployments
 upgrade_parameters.json
 docker/gethData/
 *.ignore/
+/output
+/deployment/deploy_ongoing.json

@@ -5,6 +5,10 @@
 
 # cp .env.example .env
 # cp deploy_parameters.json.example deploy_parameters.json
+#
+
+# Install dependencies
+npm install
 
 # Create wallet and address mappings
 node wallets.js | tee wallets.json
@@ -16,8 +20,16 @@ echo "#########################"
 echo "Send ETH to $admin_address"
 echo "#########################"
 
+# Create base environment file from the example
+cp .env.example .env
+
 # update .env file with new deployer mnemonic
-new_prv_key=$(jq -r '.["Deployment Address"].mnemonic' wallets.json) && sed -i '' 's/MNEMONIC=.*/MNEMONIC="'$new_prv_key'"/' .env
+new_prv_key=$(jq -r '.["Deployment Address"].mnemonic' wallets.json)
+sed -i "s/MNEMONIC=.*/MNEMONIC=\"$new_prv_key\"/" .env
+
+# Deposit ETH to L1 wallet (see first wallet in wallets.json)
+#
+read -p "Deposit some sepolia ETH to $admin_address and press enter to continue"
 
 npx hardhat run deployment/2_deployCDKValidiumDeployer.js --network sepolia
 

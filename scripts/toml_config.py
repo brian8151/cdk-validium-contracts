@@ -21,15 +21,15 @@ polygonZkEVMGlobalExitRootAddress = deploy_output.get('polygonZkEVMGlobalExitRoo
 cdkValidiumAddress = deploy_output.get('cdkValidiumAddress')
 cdkDataCommitteeContract = deploy_output.get('cdkDataCommitteeContract')
 
-# Load node.config.toml file
+# Load node.config.example.toml file
 with open(node_config_toml, 'r') as file:
     node_toml_config = toml.load(file)
 
-# Load bridge.config.toml file
+# Load bridge.config.example.toml file
 with open(bridge_config_toml, 'r') as file:
     bridge_toml_config = toml.load(file)
 
-# Load dac.config.toml file
+# Load dac.config.example.toml file
 with open(dac_config_toml, 'r') as file:
     dac_toml_config = toml.load(file)
 

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 def parse_input(file_path):
     with open(file_path, 'r') as file:
@@ -31,18 +32,15 @@ def parse_input(file_path):
 
     return output_data
 
+if len(sys.argv) <= 1:
+    print("Please provide the path to the wallets JSON file as an argument")
+    sys.exit(1)
+
 # Replace 'input.json' with the path to your JSON file
-output_data = parse_input('wallets.json')
+output_data = parse_input(sys.argv[1])
 
 # Convert the output to JSON format
 output_json = json.dumps(output_data, indent=2)
 
 # Print the JSON data
 print(output_json)
-
-full_path = os.path.join('deployment', "deploy_parameters.json")
-with open(full_path, "w") as file:
-    file.write(output_json)
-
-print(f"Output written to {full_path}")
-
