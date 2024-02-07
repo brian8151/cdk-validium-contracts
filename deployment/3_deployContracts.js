@@ -189,14 +189,15 @@ async function main() {
     const deployTransactionBridge = (PolygonZkEVMBridgeFactory.getDeployTransaction()).data;
     const dataCallNull = null;
     // Mandatory to override the gasLimit since the estimation with create are mess up D:
-    const overrideGasLimit = ethers.BigNumber.from(11155000);
+    // const overrideGasLimit = ethers.BigNumber.from(111550000);
     const [bridgeImplementationAddress, isBridgeImplDeployed] = await create2Deployment(
         cdkValidiumDeployerContract,
         salt,
         deployTransactionBridge,
         dataCallNull,
         deployer,
-        overrideGasLimit,
+        //overrideGasLimit,
+        0,
     );
 
     if (isBridgeImplDeployed) {

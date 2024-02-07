@@ -24,3 +24,4 @@ docker/gethData/
 /deployment/dac.config.toml
 /deployment/node.config.toml
 /wallets.json
+/deployment/genesis.json
