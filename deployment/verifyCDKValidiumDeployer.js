@@ -4,8 +4,7 @@ const path = require('path');
 const hre = require('hardhat');
 const { expect } = require('chai');
 
-const pathDeployParameters = path.join(__dirname, './deploy_parameters.json');
-const deployParameters = require(pathDeployParameters);
+const deployParameters = require(path.resolve(__dirname, '../output/addresses_with_cdk_deployer.json'));
 
 async function main() {
     // load deployer account

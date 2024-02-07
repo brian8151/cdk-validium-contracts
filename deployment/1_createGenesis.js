@@ -16,8 +16,8 @@ const {
 
 const { deployCDKValidiumDeployer, create2Deployment } = require('./helpers/deployment-helpers');
 
-const deployParametersPath = argv.input ? argv.input : './deploy_parameters.json';
-const deployParameters = require(deployParametersPath);
+const deployParametersPath = '../output/deploy_parameters_with_matic.json';
+const deployParameters = require(path.resolve(__dirname, deployParametersPath));
 
 const outPath = argv.out ? argv.out : './genesis.json';
 const pathOutputJson = path.join(__dirname, outPath);

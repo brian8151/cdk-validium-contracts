@@ -5,8 +5,7 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-const pathDeployParameters = path.join(__dirname, '../deploy_parameters.json');
-const deployParameters = require('../deploy_parameters.json');
+const deployParameters = require(path.resolve(__dirname, '../../output/addresses_with_cdk_deployer.json'));
 
 async function main() {
     // Load provider
@@ -107,7 +106,7 @@ async function main() {
     }
 
     deployParameters.maticTokenAddress = maticTokenContract.address;
-    fs.writeFileSync(pathDeployParameters, JSON.stringify(deployParameters, null, 1));
+    fs.writeFileSync(path.resolve(__dirname, '../../output/deploy_parameters_with_matic.json'), JSON.stringify(deployParameters, null, 1));
 }
 
 main().catch((e) => {
