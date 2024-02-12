@@ -1,10 +1,10 @@
 PrivateKey = {Path = "/pk/dac-member.keystore", Password = "password"}
 
 [L1]
-WsURL = "wss://necessary-orbital-fire.ethereum-sepolia.quiknode.pro/f61e5ec9632e79b9b09730f62536d41a2c033259"
+WsURL = "ws://sepo-nlb-zkevm-f21be80f0be835aa.elb.eu-west-1.amazonaws.com:8546"
 RpcURL = "https://sepolia.polygon.tst.validationcloud.io"
-CDKValidiumAddress = "1" #autopopulated
-DataCommitteeAddress = "1" #autopopulated
+CDKValidiumAddress = "" #autopopulated
+DataCommitteeAddress = "" #autopopulated
 Timeout = "3m"
 RetryPeriod = "5s"
 

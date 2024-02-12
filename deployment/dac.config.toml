@@ -5,8 +5,8 @@ Password = "password"
 [L1]
 WsURL = "wss://necessary-orbital-fire.ethereum-sepolia.quiknode.pro/f61e5ec9632e79b9b09730f62536d41a2c033259"
 RpcURL = "https://sepolia.polygon.tst.validationcloud.io"
-CDKValidiumAddress = "0x113930091e35803c339616Af2aE8C51dB66EB346"
-DataCommitteeAddress = "0x646BB9E96573CcB54C602D366EB04e0c08f752b2"
+CDKValidiumAddress = "0xf5A8C5A88deda27982aeEBA70812806549470fc9"
+DataCommitteeAddress = "0x4f5624096Ffd4f7242c25d0b18c5e895E0205AFe"
 Timeout = "3m"
 RetryPeriod = "5s"
 

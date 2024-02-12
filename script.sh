@@ -25,7 +25,8 @@ npx hardhat run deployment/verifyCDKValidiumDeployer.js --network sepolia
 
 # this is generating the genesis
 npx hardhat run deployment/testnet/prepareTestnet.js --network sepolia
-node deployment/1_createGenesis.js && npx hardhat run deployment/3_deployContracts.js --network sepolia && npm run saveDeployment:sepolia
+
+node deployment/1_createGenesis.js && npx hardhat run deployment/3_deployContracts.js --network sepolia
 
 mkdir -p deployments/sepolia && cp -r deployment/deploy_*.json deployments/sepolia && cp .openzeppelin/sepolia.json deployments/sepolia && cp deployment/genesis.json deployments/sepolia/genesis.original.json
 

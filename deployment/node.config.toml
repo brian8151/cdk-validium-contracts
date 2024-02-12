@@ -108,7 +108,7 @@ Enabled = false
 WaitPeriodSendSequence = "15s"
 LastBatchVirtualizationTimeMaxWaitPeriod = "10s"
 MaxTxSizeForL1 = 131072
-L2Coinbase = "0xb8bCfCc80EfCCD577b79A5aC3089A820c22F753e"
+L2Coinbase = "0x64175ca7DE70407d3Ef06c934a22Da7801bA173D"
 
 [SequenceSender.PrivateKey]
 Path = "/pk/sequencer.keystore"
@@ -122,7 +122,7 @@ VerifyProofInterval = "10s"
 TxProfitabilityCheckerType = "acceptall"
 TxProfitabilityMinReward = "1.1"
 ProofStatePollingInterval = "5s"
-SenderAddress = "0x4738FfB68FbeD79867D294B09688D1fD426B19FA"
+SenderAddress = "0x356f0fa9430f6E0D8E9bC9F924a7AeA3e9C26d1C"
 CleanupLockedProofsInterval = "2m"
 GeneratingProofCleanupThreshold = "10m"
 
