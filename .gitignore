@@ -18,3 +18,10 @@ deployments
 upgrade_parameters.json
 docker/gethData/
 *.ignore/
+/output
+/deployment/deploy_ongoing.json
+/deployment/bridge.config.toml
+/deployment/dac.config.toml
+/deployment/node.config.toml
+/wallets.json
+/deployment/genesis.json
