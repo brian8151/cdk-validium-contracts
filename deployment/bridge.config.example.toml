@@ -1,0 +1,59 @@
+[Log]
+Level = "debug"
+Outputs = ["stdout"]
+
+[SyncDB]
+Database = "postgres"
+User = "test_user"
+Password = "test_password"
+Name = "test_db"
+Host = "zkevm-bridge-db"
+Port = "5432"
+MaxConns = 200
+
+[ClaimTxManager]
+Enabled = true
+FrequencyToMonitorTxs = "10s"
+PrivateKey = {Path = "/pk/keystore.claimtxmanager", Password = "password"}
+RetryInterval = "5s"
+RetryNumber = 10
+
+[Etherman]
+URL = "https://sepolia.polygon.tst.validationcloud.io"
+MultiGasProvider = false
+L1ChainID = 11155111  #sepolia
+L2ChainID = "" #autopopulated
+L1URL = "https://sepolia.polygon.tst.validationcloud.io"
+L2URLs = ["http://cdk-validium-json-rpc:8123"]
+	[Etherman.Etherscan]
+		ApiKey = "8NHTDUAHZKTP7R7ANT9MSHCC5X8CXQZGIP"
+
+[Synchronizer]
+SyncInterval = "10s"
+SyncChunkSize = 100
+
+[BridgeController]
+Store = "postgres"
+Height = 32
+
+[BridgeServer]
+GRPCPort = "9090"
+HTTPPort = "8080"
+CacheSize = 100000
+DefaultPageLimit = 25
+MaxPageLimit = 100
+BridgeVersion = "v1"
+    [BridgeServer.DB]
+    Database = "postgres"
+    User = "test_user"
+    Password = "test_password"
+    Name = "test_db"
+    Host = "zkevm-bridge-db"
+    Port = "5432"
+    MaxConns = 200
+
+[NetworkConfig]
+GenBlockNumber = "" #autopopulated
+PolygonBridgeAddress = "" #autopopulated
+PolygonZkEVMGlobalExitRootAddress = "" #autopopulated
+L2PolygonBridgeAddresses = [""] #autopopulated

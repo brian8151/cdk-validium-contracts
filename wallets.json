@@ -1,0 +1,107 @@
+{
+  "Deployment Address": {
+    "Address": "0x64175ca7DE70407d3Ef06c934a22Da7801bA173D",
+    "PrvKey": "0xb53432e7c46adba59e024969d664a86b1ff0cc6a665d5d0e2644df7bfb769d0b",
+    "mnemonic": "pen fish what unlock raise exhaust protect picnic reunion mechanic dynamic rack",
+    "keystore": {
+      "address": "64175ca7de70407d3ef06c934a22da7801ba173d",
+      "id": "ae43ab38-b184-4c13-be8d-7b0f07176762",
+      "version": 3,
+      "crypto": {
+        "cipher": "aes-128-ctr",
+        "cipherparams": {
+          "iv": "bf34063e4de594099df7bfc2493ed194"
+        },
+        "ciphertext": "69f1b0d9fb9d9d95c01939207828ebe4a35213cb7d3ef9ac4e26d5c049e3d8f7",
+        "kdf": "scrypt",
+        "kdfparams": {
+          "salt": "71894f32136318a050a07d42ea16875fe10602f128a5d1108228bdecfb664ed0",
+          "n": 131072,
+          "dklen": 32,
+          "p": 1,
+          "r": 8
+        },
+        "mac": "e4c13d99a61fc8f311a0c2c6e2e36755268c25fe82d00c168495aa2874ff7aae"
+      },
+      "x-ethers": {
+        "client": "ethers.js",
+        "gethFilename": "UTC--2024-02-05T17-18-08.0Z--64175ca7de70407d3ef06c934a22da7801ba173d",
+        "mnemonicCounter": "e339098fa6381947576f4894d512f7f1",
+        "mnemonicCiphertext": "8a96d30bdb05cb01625174271bf64a68",
+        "path": "m/44'/60'/0'/0/0",
+        "locale": "en",
+        "version": "0.1"
+      }
+    }
+  },
+  "Trusted sequencer": {
+    "Address": "0x2F9a03c130871fc3Cc74284504523E08e56D2C57",
+    "PrvKey": "0x20b4e74b02efd32491611eec7f532effc67dd742ce3d41a9c10ffb95bc75d244",
+    "mnemonic": "cereal person notable prize example logic grief iron obey upper dilemma imitate",
+    "keystore": {
+      "address": "2f9a03c130871fc3cc74284504523e08e56d2c57",
+      "id": "454a3121-3df1-46c5-ab3a-ec801d28833f",
+      "version": 3,
+      "crypto": {
+        "cipher": "aes-128-ctr",
+        "cipherparams": {
+          "iv": "29a9fa8e52ead56da2d7c633dae02c03"
+        },
+        "ciphertext": "079aa1703a4a7e8a68afd6576bd47b289e3848ad2a2985f5960db253ac7a3592",
+        "kdf": "scrypt",
+        "kdfparams": {
+          "salt": "7b502369025e104505bb1ae5790ea1034c8f6440760dd7e365006e914db72130",
+          "n": 131072,
+          "dklen": 32,
+          "p": 1,
+          "r": 8
+        },
+        "mac": "ab46b34921018a2c79a19e76b3f608089ecf7960c6caa2338593c5d538fed2f5"
+      },
+      "x-ethers": {
+        "client": "ethers.js",
+        "gethFilename": "UTC--2024-02-05T17-18-11.0Z--2f9a03c130871fc3cc74284504523e08e56d2c57",
+        "mnemonicCounter": "6254b1cad846c712d82c54bc2e48ed74",
+        "mnemonicCiphertext": "bacb96922d5b2e9d6c961e7edc8dc5b5",
+        "path": "m/44'/60'/0'/0/0",
+        "locale": "en",
+        "version": "0.1"
+      }
+    }
+  },
+  "Trusted aggregator": {
+    "Address": "0x356f0fa9430f6E0D8E9bC9F924a7AeA3e9C26d1C",
+    "PrvKey": "0x8eb4544ac404fe51554b0d4c4a40b717ff2a380e9a42f896a1218c3b250e7db4",
+    "mnemonic": "sibling fox kid gold rotate coin walk barrel ripple trend library demise",
+    "keystore": {
+      "address": "356f0fa9430f6e0d8e9bc9f924a7aea3e9c26d1c",
+      "id": "00085cac-cda8-41f6-8b6b-24bd827d22a0",
+      "version": 3,
+      "crypto": {
+        "cipher": "aes-128-ctr",
+        "cipherparams": {
+          "iv": "1be140b4b707037227ba8bb9121a8fb6"
+        },
+        "ciphertext": "ec7e9d6e02ce275ccf5fcb88d6fbc28db1ca959a64d7f74f2bf754ca61cf909c",
+        "kdf": "scrypt",
+        "kdfparams": {
+          "salt": "da714e6356421304175c51032a4719e4377df8c952906a7b49a4d724c030267e",
+          "n": 131072,
+          "dklen": 32,
+          "p": 1,
+          "r": 8
+        },
+        "mac": "b23e5d08476a2d98429f0b04480083ca50bbf9dc6fefc96764436b8dc3d7f413"
+      },
+      "x-ethers": {
+        "client": "ethers.js",
+        "gethFilename": "UTC--2024-02-05T17-18-14.0Z--356f0fa9430f6e0d8e9bc9f924a7aea3e9c26d1c",
+        "mnemonicCounter": "b8d1fa2292181e26f140f25f7c7ab01e",
+        "mnemonicCiphertext": "f17d51c1bb8f90b7578de58de453c787",
+        "path": "m/44'/60'/0'/0/0",
+        "locale": "en",
+        "version": "0.1"
+      }
+    }
+  }
+}

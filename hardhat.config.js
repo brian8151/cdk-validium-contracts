@@ -94,7 +94,9 @@ module.exports = {
         count: 20,
       },
     },
+    // https://sepolia.polygon.tst.validationcloud.io
     sepolia: {
+      // url: `https://sepolia.polygon.tst.validationcloud.io`,
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: {
         mnemonic: process.env.MNEMONIC || DEFAULT_MNEMONIC,
