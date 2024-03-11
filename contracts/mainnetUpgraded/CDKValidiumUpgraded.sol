@@ -21,7 +21,9 @@ contract CDKValidiumUpgraded is CDKValidium {
      * @param _matic MATIC token address
      * @param _rollupVerifier Rollup verifier address
      * @param _bridgeAddress Bridge address
+     * @param _dataCommitteeAddress Data committee address
      * @param _chainID L2 chainID
+     * @param _forkID Fork Id
      */
     constructor(
         IPolygonZkEVMGlobalExitRoot _globalExitRootManager,
