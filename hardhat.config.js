@@ -30,7 +30,7 @@ module.exports = {
       {
         version: "0.8.20",
         settings: {
-          evmVersion: 'paris',
+          evmVersion: "paris",
           optimizer: {
             enabled: true,
             runs: 999999
@@ -64,7 +64,19 @@ module.exports = {
           }
         }
       }
-    ]
+    ],
+    overrides: {
+      "contracts/upgraded/CDKValidiumUpgraded.sol": {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 9999,
+          },
+          evmVersion: "paris",
+        },
+      },
+    },
   },
   networks: {
     mainnet: {
@@ -114,6 +126,7 @@ module.exports = {
     },
     localhost: {
       url: 'http://127.0.0.1:8545',
+      chainId: parseInt(process.env.L1_CHAIN_ID),
       accounts: {
         mnemonic: process.env.MNEMONIC || DEFAULT_MNEMONIC,
         path: "m/44'/60'/0'/0",
