@@ -24,6 +24,7 @@ contract CDKValidiumUpgraded is CDKValidium {
      * @param _dataCommitteeAddress Data committee address
      * @param _chainID L2 chainID
      * @param _forkID Fork Id
+     * @param versionBeforeUpgrade Initial version
      */
     constructor(
         IPolygonZkEVMGlobalExitRoot _globalExitRootManager,
