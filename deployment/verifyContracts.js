@@ -89,10 +89,10 @@ async function main() {
             {
                 address: deployOutputParameters.cdkValidiumAddress,
                 constructorArguments: [
-                    deployOutputParameters.PolygonZkEVMGlobalExitRootAddress,
+                    deployOutputParameters.polygonZkEVMGlobalExitRootAddress,
                     deployOutputParameters.maticTokenAddress,
                     deployOutputParameters.verifierAddress,
-                    deployOutputParameters.PolygonZkEVMBridgeAddress,
+                    deployOutputParameters.polygonZkEVMBridgeAddress,
                     deployOutputParameters.cdkDataCommitteeContract,
                     deployOutputParameters.chainID,
                     deployOutputParameters.forkID,
