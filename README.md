@@ -81,15 +81,31 @@ To build the Docker image, run:
 
 ```bash
 npm run docker:contracts
+
 ```
 
 This will create a new Docker image named `hermeznetwork/geth-cdk-validium-contracts`, which includes a Geth node with the deployed contracts. The deployment output can be found at `docker/deploymentOutput/deploy_output.json`.
+
+
+## Build Dockerquorum Image
+
+```bash
+1. start quorum server first
+2. prepare quourm polygon env
+npm run docker:quorum:contracts-prepare
+3. stop quorum server
+4. start build image locally
+npm run docker:quorum:contracts-build
+
+```
 
 To run the Docker container, use:
 
 ```bash
 docker run -p 8545:8545 hermeznetwork/geth-cdk-validium-contracts
 ```
+
+This will create a new Docker image named `onyx/quorum-cdk-validium-contracts:22.7.5`, which includes a Geth node with the deployed contracts. The deployment output can be found at `docker/deploymentOutput/deploy_output.json`.
 
 ## Note
 

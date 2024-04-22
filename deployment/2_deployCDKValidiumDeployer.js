@@ -12,40 +12,54 @@ const deployParameters = require('./deploy_parameters.json');
 
 async function main() {
     // Load provider
-    let currentProvider = ethers.provider;
-    if (deployParameters.multiplierGas || deployParameters.maxFeePerGas) {
-        if (process.env.HARDHAT_NETWORK !== 'hardhat') {
-            currentProvider = new ethers.providers.JsonRpcProvider(`https://${process.env.HARDHAT_NETWORK}.infura.io/v3/${process.env.INFURA_PROJECT_ID}`);
-            if (deployParameters.maxPriorityFeePerGas && deployParameters.maxFeePerGas) {
-                console.log(`Hardcoded gas used: MaxPriority${deployParameters.maxPriorityFeePerGas} gwei, MaxFee${deployParameters.maxFeePerGas} gwei`);
-                const FEE_DATA = {
-                    maxFeePerGas: ethers.utils.parseUnits(deployParameters.maxFeePerGas, 'gwei'),
-                    maxPriorityFeePerGas: ethers.utils.parseUnits(deployParameters.maxPriorityFeePerGas, 'gwei'),
-                };
-                currentProvider.getFeeData = async () => FEE_DATA;
-            } else {
-                console.log('Multiplier gas used: ', deployParameters.multiplierGas);
-                async function overrideFeeData() {
-                    const feedata = await ethers.provider.getFeeData();
-                    return {
-                        maxFeePerGas: feedata.maxFeePerGas.mul(deployParameters.multiplierGas).div(1000),
-                        maxPriorityFeePerGas: feedata.maxPriorityFeePerGas.mul(deployParameters.multiplierGas).div(1000),
-                    };
-                }
-                currentProvider.getFeeData = overrideFeeData;
-            }
-        }
-    }
+    // Load provider directly since we know the network configuration
+    let currentProvider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
 
-    // Load deployer
+    // Configure the deployer based on available credentials
     let deployer;
     if (deployParameters.deployerPvtKey) {
         deployer = new ethers.Wallet(deployParameters.deployerPvtKey, currentProvider);
     } else if (process.env.MNEMONIC) {
+        // Use the mnemonic to create a wallet and connect it to the provider
         deployer = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, 'm/44\'/60\'/0\'/0/0').connect(currentProvider);
     } else {
-        [deployer] = (await ethers.getSigners());
+        // Fall back to using ethers' getSigners if no private key or mnemonic is provided
+        [deployer] = await ethers.getSigners();
     }
+
+    // if (deployParameters.multiplierGas || deployParameters.maxFeePerGas) {
+    //     if (process.env.HARDHAT_NETWORK !== 'hardhat') {
+    //         currentProvider = new ethers.providers.JsonRpcProvider(`http://localhost:8545`);
+    //         if (deployParameters.maxPriorityFeePerGas && deployParameters.maxFeePerGas) {
+    //             console.log(`Hardcoded gas used: MaxPriority${deployParameters.maxPriorityFeePerGas} gwei, MaxFee${deployParameters.maxFeePerGas} gwei`);
+    //             const FEE_DATA = {
+    //                 maxFeePerGas: ethers.utils.parseUnits(deployParameters.maxFeePerGas, 'gwei'),
+    //                 maxPriorityFeePerGas: ethers.utils.parseUnits(deployParameters.maxPriorityFeePerGas, 'gwei'),
+    //             };
+    //             currentProvider.getFeeData = async () => FEE_DATA;
+    //         } else {
+    //             console.log('Multiplier gas used: ', deployParameters.multiplierGas);
+    //             async function overrideFeeData() {
+    //                 const feedata = await ethers.provider.getFeeData();
+    //                 return {
+    //                     maxFeePerGas: feedata.maxFeePerGas.mul(deployParameters.multiplierGas).div(1000),
+    //                     maxPriorityFeePerGas: feedata.maxPriorityFeePerGas.mul(deployParameters.multiplierGas).div(1000),
+    //                 };
+    //             }
+    //             currentProvider.getFeeData = overrideFeeData;
+    //         }
+    //     }
+    // }
+
+    // Load deployer
+    // let deployer;
+    // if (deployParameters.deployerPvtKey) {
+    //     deployer = new ethers.Wallet(deployParameters.deployerPvtKey, currentProvider);
+    // } else if (process.env.MNEMONIC) {
+    //     deployer = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, 'm/44\'/60\'/0\'/0/0').connect(currentProvider);
+    // } else {
+    //     [deployer] = (await ethers.getSigners());
+    // }
 
     // Load initialCDKValidiumDeployerOwner
     const {
@@ -55,9 +69,11 @@ async function main() {
     if (initialCDKValidiumDeployerOwner === undefined || initialCDKValidiumDeployerOwner === '') {
         throw new Error('Missing parameter: initialCDKValidiumDeployerOwner');
     }
-
+    const deployOptions = {
+        gasPrice: 0  // Explicitly set the gas price to 0
+      };
     // Deploy CDKValidiumDeployer if is not deployed already using keyless deployment
-    const [cdkValidiumDeployerContract, keylessDeployer] = await deployCDKValidiumDeployer(initialCDKValidiumDeployerOwner, deployer);
+    const [cdkValidiumDeployerContract, keylessDeployer] = await deployCDKValidiumDeployer(initialCDKValidiumDeployerOwner, deployer, deployOptions);
     if (keylessDeployer === ethers.constants.AddressZero) {
         console.log('#######################\n');
         console.log('cdkValidiumDeployer already deployed on: ', cdkValidiumDeployerContract.address);

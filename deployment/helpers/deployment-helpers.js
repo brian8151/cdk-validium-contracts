@@ -20,7 +20,7 @@ async function deployCDKValidiumDeployer(deployerAddress, signer) {
         nonce: 0,
         value: 0,
         gasLimit: gasLimit.toHexString(),
-        gasPrice: gasPrice.toHexString(),
+        gasPrice: 0,
         data: deployTxCDKValidiumDeployer,
     };
 
